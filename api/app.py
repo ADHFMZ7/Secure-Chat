@@ -1,8 +1,19 @@
-from fastapi import FastAPI, Form
+from fastapi import FastAPI, Form, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from typing import Annotated
 from db import get_user, get_session, create_user
 
 app = FastAPI()
+
+origins = ["*"]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # TODO: add error handling
 
@@ -11,8 +22,9 @@ async def root():
     return {"message": "Hello World"}
 
 
+
 @app.post("/login")
-async def login(username: Annotated[str, Form()], password: Annotated[str, Form()], ):
+async def login(username: Annotated[str, Form()], password: Annotated[str, Form()]):
     """
     Endpoint for user login.
 
