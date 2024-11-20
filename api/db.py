@@ -21,6 +21,7 @@ def create_user(username: str, password: str) -> User | None:
     # Return new user
     return new_user
 
+
 # Change this when sessions are figured out.
 def get_session(id: str) -> str | None:
     return None  

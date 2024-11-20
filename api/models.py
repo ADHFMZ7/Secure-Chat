@@ -4,4 +4,3 @@ from dataclasses import dataclass
 class User:
     username: str
     password: str
-
