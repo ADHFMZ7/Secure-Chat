@@ -8,12 +8,18 @@ def get_user(username: str) -> User | None:
 
     return None
 
-def register_user(username: str, password: str) -> str:
-    
+def create_user(username: str, password: str) -> User | None:
+  
+    # Make sure username doesnt already exist
+    if username in users:
+        return None
+
+    # Create user
     new_user = User(username, password)
-     
     users[new_user.username] = new_user 
-    return new_user.username
+
+    # Return new user
+    return new_user
 
 # Change this when sessions are figured out.
 def get_session(id: str) -> str | None:
