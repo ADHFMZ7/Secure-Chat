@@ -12,7 +12,13 @@ class User:
     #
     # def get_friends(self) -> List[Self]:
     #     pass
-   
+
+
+
+@dataclass
+class Chat:
+    id: str
+
 @dataclass
 class Message:
     sender: User

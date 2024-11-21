@@ -18,10 +18,10 @@ async def connect(websocket: WebSocket):
     #     data = await websocket.receive_json()
     #     await websocket.send_text(f"Message text was: {data}")
    
-
     while True:
         payload = await websocket.receive_json()
-       
+
+
         # TODO: handle errors when the payload is not a valid message
         message = Message(**payload)
        
