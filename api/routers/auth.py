@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Form 
+from fastapi import APIRouter, Form, HTTPException
 from typing import Annotated
 from db import get_user, get_session, create_user
 
@@ -21,19 +21,16 @@ async def login(username: Annotated[str, Form()], password: Annotated[str, Form(
     # Database query to see if the username exists
 
     if not (user := get_user(username)):
-        print("User does not exist")
-        # Username does not exist error
-        return
+        raise HTTPException(status_code=404, detail="User does not exist")
     
     if user.password != password:
         print("Incorrect password")
-        # Incorrect password error
-        return
+        raise HTTPException(status_code=401, detail="Password incorrect")
 
     if (session := get_session(user.username)):
         # Session already exists, return it
-        print("Session already exists")
-        return session
+        # This should not be an error later, it should renew session
+        raise HTTPException(status_code=400, detail="Session already exists")
 
     # create new session 
     session = "new_session"
