@@ -2,8 +2,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from routers import auth, user, chat
+from db import init_db
 
 app = FastAPI()
+
+@app.on_event("startup")
+async def startup():
+    await init_db()
 
 app.add_middleware(
     CORSMiddleware,

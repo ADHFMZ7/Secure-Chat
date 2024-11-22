@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 from typing import List, Self
 
 @dataclass
@@ -14,7 +15,6 @@ class User:
     #     pass
 
 
-
 @dataclass
 class Chat:
     id: str
@@ -24,7 +24,7 @@ class Message:
     sender: User
     chat_id: str
     content: str
-    timestamp: float
+    timestamp: datetime
     
 
 

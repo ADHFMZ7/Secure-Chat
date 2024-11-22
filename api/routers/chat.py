@@ -1,17 +1,19 @@
-from fastapi import APIRouter, HTTPException, WebSocket
-from typing import Annotated
-from db import get_user, get_session, create_user
+from fastapi import APIRouter, WebSocketException, WebSocket, Depends
+from typing import Annotated, Dict
+# from db import get_user, get_session, create_user 
 from models import Message
+from dependencies import get_db
 
 router = APIRouter()
-
 
 #TODO: 
 #   - Make the websocket require a valid session
 #   - implement messaging broadcast to clients in chat room
 
+active_connections: Dict[str, WebSocket] = {}
+
 @router.websocket("/chat")
-async def connect(websocket: WebSocket):
+async def connect(websocket: WebSocket, db = Depends(get_db)):
     await websocket.accept()
 
     # while True:
@@ -24,7 +26,11 @@ async def connect(websocket: WebSocket):
 
         # TODO: handle errors when the payload is not a valid message
         message = Message(**payload)
-       
-         
-        
-        
+
+        # for user in users_in(message.chat_id):
+        #     # TODO: Change this to id later
+        #     socket = active_connections[user.username]
+        #
+        #     print(f"Sent message to {user.username} at {message.timestamp}")
+        #
+        #     await socket.send_json(message)
