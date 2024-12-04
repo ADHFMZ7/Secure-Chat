@@ -1,12 +1,10 @@
 from fastapi import APIRouter, Form, HTTPException, Depends, Response
 from typing import Annotated
-# from db import get_user, get_session, create_user, session_exists
-from db import get_user, create_user
-from dependencies import get_db
+from db import get_user, create_user, get_session_username, create_session
+from dependencies import get_current_user, get_db
 from aiosqlite import Connection
 
 router = APIRouter()
-
 
 @router.post("/login")
 async def login(response: Response,
@@ -32,19 +30,28 @@ async def login(response: Response,
         print("Incorrect password")
         raise HTTPException(status_code=401, detail="Password incorrect")
 
-    # if (session := session_exists(user.username)):
-    #     # Session already exists, return it
-    #     # This should not be an error later, it should renew session
-    #     raise HTTPException(status_code=400, detail="Session already exists")
+    if (session := await get_session_username(db, username)):
+        print(f"session {session[0]} already existed")
+        # User already has a session
+        # load it and create a new cookie
+        raise HTTPException(status_code=400, detail="Session already exists")
 
     # create new session 
-    session = "new_session"
+    session_id = username + "token"
     print("Created new session:", session)
 
-    response.set_cookie
+    response.set_cookie(
+        key="session_id",
+        value=session_id,
+        httponly=True,
+        secure=False,  # Set to True in production with HTTPS,
+        samesite="none",
+        domain="localhost"
+    )
 
-    return {"access_token": session,
-            "token_type": "bearer"}
+    print(response.headers)
+
+    return {"session_id": session_id}
 
 
 @router.post("/register")
@@ -55,3 +62,8 @@ async def register(username: Annotated[str, Form()], password: Annotated[str, Fo
         raise HTTPException(status_code=400, detail="error registering user")
 
     return {"id": user[0]}
+
+@router.get("/protected")
+async def test_protected(user = Depends(get_current_user)):
+    print("successfully authenticated")
+    return user

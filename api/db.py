@@ -1,6 +1,6 @@
 from aiosqlite import Connection, Row, connect, IntegrityError
 from typing import Iterable
-# from models import User
+from models import User
 # from random import randint
 
 DATABASE_URL = "main.db"
@@ -42,27 +42,49 @@ async def users_in(db: Connection, chat_id: int) -> Iterable[Row]:
         return await cursor.fetchall()
 
 
-# def create_session(user: User):
-#
-#     # Generate random key
-#     key = randint(int(1e50), int(1e100))
-#
-#     # Store session information in map
-#     # Session should store:
-#     # user that is logged in
-#     # When logged in ??
-#     # When it expires??
-#
-#     sessions[key] = user.username
+        # CREATE TABLE IF NOT EXISTS Session (
+        #     session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+        #     user_id INTEGER,
+        #     last_seen TIMESTAMP,
+        #     status TEXT,
+        #     device TEXT,
+        #     ip_address TEXT,
+        #     FOREIGN KEY (user_id) REFERENCES User(ID)
+
+
+async def create_session(db:Connection, user: User):
+
+    async with db.execute("INSERT INTO Session (user_id) VALUES (?)", (user.ID,)) as cursor:
+        
+        await cursor.commit()
+
+    # Store session information in map
+    # Session should store:
+    # user that is logged in
+    # When logged in ??
+    # When it expires??
 
 
 # # Change this when sessions are figured out.
-async def get_session(db: Connection, username: str) -> Row | None:
+async def get_session(db: Connection, session_id: str) -> Row | None:
 
-    async with db.execute("SELECT * FROM Session WHERE user_id = ?", (username,)) as cursor:
+    async with db.execute("SELECT * FROM Session WHERE session_id = ?", (session_id,)) as cursor:
         session = await cursor.fetchone()
         # logging maybe?
         return session 
+
+async def get_session_username(db: Connection, username: str) -> Row | None:
+    query = """
+        SELECT Session.*, User.username 
+        FROM Session
+        JOIN User ON Session.user_id = User.ID
+        WHERE User.username = ?
+    """
+
+    async with db.execute(query, (username,)) as cursor:
+        session = await cursor.fetchone()
+        # logging maybe?
+        return session
 
 
 # def session_exists(username: str):
@@ -132,12 +154,10 @@ async def init_db():
 
         await db.execute("""
         CREATE TABLE IF NOT EXISTS Session (
+            session_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER,
             last_seen TIMESTAMP,
-            status TEXT,
-            device TEXT,
             ip_address TEXT,
-            PRIMARY KEY (user_id),
             FOREIGN KEY (user_id) REFERENCES User(ID)
         )
         """)
