@@ -14,11 +14,16 @@ async def get_db():
 async def get_current_user(session_id: str = Security(cookie),
                            db: Connection = Depends(get_db)):
 
+    print("received session id:", session_id)
+
     session = await get_session(db, session_id)
+
+    print(session)
 
     if not session:
         raise HTTPException(status_code=403, detail="Invalid or missing session cookie")
 
     username = session[1] # Whatever field username is
+    print("Username:", username)
 
     return get_user(db, username)
