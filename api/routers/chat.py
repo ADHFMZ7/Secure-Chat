@@ -10,8 +10,6 @@ router = APIRouter()
 #   - Make the websocket require a valid session
 #   - implement messaging broadcast to clients in chat room
 
-active_connections: Dict[str, WebSocket] = {}
-
 @router.websocket("/chat")
 async def connect(websocket: WebSocket, db = Depends(get_db)):
     await websocket.accept()
