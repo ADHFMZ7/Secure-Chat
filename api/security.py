@@ -4,16 +4,21 @@ from db import get_user
 
 # TODO: Continue implementing new auth system
 
-def hash_password(password: str):
+async def hash_password(password: str):
+    #temp
+    return password
     ...
 
-def verify_password(plaintext_pass: str, hashed_password: str) -> bool:
+async def verify_password(plaintext_pass: str, hashed_password: str) -> bool:
+    #temp
+    return plaintext_pass == hashed_password
+
     ...
 
-def validate_user(session: Connection, username: str, password: str) -> int:
+async def validate_user(session: Connection, username: str, password: str) -> int:
 
-    if (user := get_user(session, username)):
-        if verify_password(password, user[2]):
+    if (user := await get_user(session, username)):
+        if await verify_password(password, user[2]):
             return user[0]
         else:
             raise HTTPException(status_code=401, detail="Password incorrect")
