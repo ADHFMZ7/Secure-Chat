@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Form, HTTPException, Depends, Response
+from fastapi import APIRouter, Form, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
-from db import get_user, create_user, get_session_username, create_session, delete_session
-from dependencies import get_current_user, get_db
 from aiosqlite import Connection
 
-from security import validate_user
+from db import get_user, create_user, get_session_username, create_session, delete_session
+from dependencies import get_current_user, get_db
+from security import validate_user, hash_password
 
 router = APIRouter()
 
@@ -25,12 +25,11 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
     """
 
     username, password = form_data.username, form_data.password
-    print(username, password)
     user_id = await validate_user(db, username, password)
-    print(user_id)
+
     # TODO: change this later when sessions are figured out
     if (session := await get_session_username(db, username)):
-        print(f"session {session[0]} already existed")
+        print(f"session {session['session_id']} already existed")
         # User already has a session
         # load it and create a new cookie
         raise HTTPException(status_code=400, detail="Session already exists")
@@ -44,23 +43,29 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
 
 
 @router.post("/register")
-async def register(username: Annotated[str, Form()], password: Annotated[str, Form()], db = Depends(get_db)):
+async def register(username: Annotated[str, Form()], 
+                   password: Annotated[str, Form()], 
+                   db = Depends(get_db)):
 
-    if not (user := await create_user(db, username, password)):
+    hashed_password = hash_password(password)
+
+    if not (user := await create_user(db, username, hashed_password)):
         # User not registered properly.
         raise HTTPException(status_code=400, detail="error registering user")
 
-    return {"id": user[0]}
+    return {"id": user['user_id']}
+
+
 
 @router.get("/logout")
 async def logout(user = Depends(get_current_user), db = Depends(get_db)):
+    print(user) 
    
-    if not user:
-        raise HTTPException(status_code=400, detail="User not found") 
-   
-    session_id = await get_session_username(user[1]) 
-    await delete_session(db, session_id) 
-    await delete_session()
+    if not (session := await get_session_username(db, user['username'])):
+        print('session does not exist')
+        return {"message": "logged out"}
+
+    await delete_session(db, session['session_id']) 
     return {"message": "logged out"}
 
 @router.get("/protected")

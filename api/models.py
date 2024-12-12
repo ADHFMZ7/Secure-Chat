@@ -21,8 +21,8 @@ class Chat:
 
 @dataclass
 class Message:
-    sender: User
-    chat_id: str
+    sender_id: str #Foreign Key
+    chat_id: str #Foreign Key
     content: str
     timestamp: datetime
     
