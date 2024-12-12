@@ -7,6 +7,10 @@ from db import DATABASE_URL, get_session, get_user
 cookie = APIKeyCookie(name="session_id", auto_error=False)
 
 async def get_db():
+    """
+    Fetches database session     
+    """
+    
     async with connect(DATABASE_URL) as db:
         db.row_factory = Row 
         yield db
@@ -18,7 +22,7 @@ async def get_current_user(session_id: str = Security(cookie),
 
     session = await get_session(db, session_id)
 
-    print(session)
+    print("Session received:", session)
 
     if not session:
         raise HTTPException(status_code=403, detail="Invalid or missing session cookie")

@@ -52,11 +52,12 @@ async def users_in(db: Connection, chat_id: int) -> Iterable[Row]:
         #     FOREIGN KEY (user_id) REFERENCES User(ID)
 
 
-async def create_session(db:Connection, user: User):
+async def create_session(db:Connection, user_id: int):
 
-    async with db.execute("INSERT INTO Session (user_id) VALUES (?)", (user.ID,)) as cursor:
+    async with db.execute("INSERT INTO Session (user_id) VALUES (?)", (user_id,)) as cursor:
         
-        await cursor.commit()
+        await db.commit()
+        return cursor.lastrowid
 
     # Store session information in map
     # Session should store:
@@ -64,6 +65,12 @@ async def create_session(db:Connection, user: User):
     # When logged in ??
     # When it expires??
 
+async def delete_session(db: Connection, session_id: int):
+    async with db.execute("DELETE FROM Session WHERE session_id = ?", (session_id,)) as cursor:
+        await db.commit()
+        return cursor.rowcount
+    
+    return 0
 
 # # Change this when sessions are figured out.
 async def get_session(db: Connection, session_id: str) -> Row | None:
