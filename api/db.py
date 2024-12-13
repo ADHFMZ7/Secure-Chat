@@ -6,6 +6,14 @@ from uuid import uuid4
 
 DATABASE_URL = "main.db"
 
+async def get_db():
+    """
+    Dependency to fetch database session     
+    """
+    async with connect(DATABASE_URL) as db:
+        db.row_factory = Row 
+        yield db
+
 async def get_user(db: Connection, username: str) -> Row | None:
 
     async with db.execute("SELECT * FROM User WHERE username = ?", (username,)) as cursor:

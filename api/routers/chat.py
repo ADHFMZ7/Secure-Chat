@@ -1,8 +1,9 @@
 from fastapi import APIRouter, WebSocketException, WebSocket, Depends
 from typing import Annotated, Dict
-# from db import get_user, get_session, create_user 
+
 from models import Message
-from dependencies import get_db
+from db import get_db
+from security import get_authenticated_user
 
 router = APIRouter()
 
@@ -11,7 +12,7 @@ router = APIRouter()
 #   - implement messaging broadcast to clients in chat room
 
 @router.websocket("/chat")
-async def connect(websocket: WebSocket, db = Depends(get_db)):
+async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(get_authenticated_user)):
     await websocket.accept()
 
     # while True:

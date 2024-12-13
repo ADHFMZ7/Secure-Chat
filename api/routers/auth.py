@@ -3,9 +3,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from aiosqlite import Connection
 
-from db import get_user, create_user, get_session_username, create_session, delete_session
-from dependencies import get_current_user, get_db
-from security import validate_user, hash_password
+from db import create_user, get_session_username, create_session, delete_session, get_db
+from security import validate_user, hash_password, get_authenticated_user
 
 router = APIRouter()
 
@@ -58,7 +57,7 @@ async def register(username: Annotated[str, Form()],
 
 
 @router.get("/logout")
-async def logout(user = Depends(get_current_user), db = Depends(get_db)):
+async def logout(user = Depends(get_authenticated_user), db = Depends(get_db)):
     print(user) 
    
     if not (session := await get_session_username(db, user['username'])):
@@ -69,7 +68,7 @@ async def logout(user = Depends(get_current_user), db = Depends(get_db)):
     return {"message": "logged out"}
 
 @router.get("/protected")
-async def test_protected(user = Depends(get_current_user)):
+async def test_protected(user = Depends(get_authenticated_user)):
     print("successfully authenticated")
     print(user)
     return user
