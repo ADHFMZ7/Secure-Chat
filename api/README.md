@@ -8,6 +8,7 @@
   - Symmetric session key distributed when new chat is created
 - [ ] Password hashing
 - [ ] Websocket Connection Manager
+- [ ] Adding friends
 
 
 
