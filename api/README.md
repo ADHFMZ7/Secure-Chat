@@ -1,6 +1,23 @@
 # API Docs
 
 
+## TODOs
+
+- [ ] Key distribution
+  - User generates key-pair and sends public when registering
+  - Symmetric session key distributed when new chat is created
+- [ ] Password hashing
+- [ ] Websocket Connection Manager
+
+
+
+
+
+
+
+
+
+
 
 ## Auth
 
