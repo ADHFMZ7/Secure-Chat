@@ -2,16 +2,18 @@ from aiosqlite import Connection
 from fastapi import HTTPException, Security, Depends
 from fastapi.security import OAuth2PasswordBearer
 from db import get_user, get_session, get_user_by_session, get_db
+import hashlib
+import hmac
 
 oauth_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-def hash_password(password: str):
-    # TODO: Implement real hashing algorithm
-    return password
+def hash_password(password: str) -> str:
+    # Implement real hashing algorithm
+    return hashlib.sha256(password.encode()).hexdigest()
 
 async def verify_password(plaintext_password: str, hashed_password: str) -> bool:
-    # TODO: Implement real hash verification
-    return hash_password(plaintext_password) == hashed_password
+    # Implement real hash verification
+    return hmac.compare_digest(hash_password(plaintext_password), hashed_password)
 
 async def validate_user(session: Connection, username: str, password: str) -> int:
 
