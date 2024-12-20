@@ -18,6 +18,7 @@ def generate_kdc_private_key():
     else:
         print(f"priv key already exists")
 
+#Generate KDC's public key
 def generate_kdc_public_key():
     if not os.path("kdc_public.pem"):
         KDC_public_key = RSA.generate(1024)
