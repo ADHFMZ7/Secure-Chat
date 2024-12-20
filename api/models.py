@@ -8,12 +8,6 @@ class User(BaseModel):
     username: str
     password: str
 
-    # def is_online(self) -> bool:
-    #     return bool(get_session(self.id))
-    #
-    # def get_friends(self) -> List[Self]:
-    #     pass
-
 
 class Chat(BaseModel):
     id: str

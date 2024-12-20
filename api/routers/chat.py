@@ -7,10 +7,6 @@ from security import ws_get_user
 from connections import ConnectionManager
 
 router = APIRouter()
-
-#TODO: 
-#   - implement messaging broadcast to clients in chat room
-
 conns = ConnectionManager()
 
 @router.websocket("/chat")
@@ -52,9 +48,16 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                         for user in await get_users_in_chat(db, body.chat_id):
                             if (user_conn := conns.get_user_connection(user['user_id'])):
                                 await user_conn.send_json(f"Received message \'{body.content}\' from user with id {body.sender_id}")
-                                        
+                          
+                    case 'leave_chat':
+                        pass 
+                    case '':          
+                        pass
                     case default:
                         await websocket.send_json({"Message": "Invalid message type"}) 
+               
+
+               
                 
             else:
                 # invalid message

@@ -18,10 +18,8 @@ async def validate_user(session: Connection, username: str, password: str) -> in
     if (user := await get_user(session, username)):
         if await verify_password(password, user['hashed_password']):
             return user['user_id']
-        else:
-            raise HTTPException(status_code=401, detail="Password incorrect")
 
-    raise HTTPException(status_code=404, detail="User does not exist")
+    raise HTTPException(status_code=401, detail="Invalid Credentials")
 
 async def ws_get_user(db: Connection = Depends(get_db), token: str = None,):
 

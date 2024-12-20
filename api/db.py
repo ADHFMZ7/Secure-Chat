@@ -85,7 +85,7 @@ async def delete_session(db: Connection, session_id: int):
     
     return 0
 
-# # Change this when sessions are figured out.
+# Change this when sessions are figured out.
 async def get_session(db: Connection, session_id: str) -> Row | None:
 
     async with db.execute("SELECT * FROM Session WHERE session_id = ?", (session_id,)) as cursor:

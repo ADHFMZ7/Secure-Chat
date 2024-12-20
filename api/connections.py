@@ -12,8 +12,8 @@ class ConnectionManager:
         self.connections[user_id] = ws
 
     def remove_connection(self, user_id: int):
-        self.connections[user_id].close()
-        del self.connections[user_id]
+        if user_id in self.connections:
+            del self.connections[user_id]
 
     def get_active_connections(self):
         return self.connections

@@ -6,18 +6,10 @@
 - [ ] Key distribution
   - User generates key-pair and sends public when registering
   - Symmetric session key distributed when new chat is created
-- [ ] Password hashing
-- [ ] Websocket Connection Manager
+- [x] Password hashing
+- [x] Websocket Connection Manager
 - [ ] Adding friends
-
-
-
-
-
-
-
-
-
+- [ ] Infer sender id from websocket
 
 
 ## Auth
@@ -26,10 +18,38 @@
 ### /register
 ### /logout
 
-
 ## Chat
 
-### Protocol
+Chat features are all handled through a websocket connection
+
+The websocket connection expects json commands
+
+format of json command:
+
+```
+{
+  type: {type of command}
+  body: {body of command}
+}
+```
+
+### Chat Creation
+```
+type: 'create_chat'
+body: {
+  user_ids: [int]
+}
+```
+### Sending Messages
+```
+type: 'send_message'
+body: {
+sender_id: int 
+  chat_id: int
+  content: str
+}
+```
+## Protocol
 
 1. User starts a websockets connection with the server
 1. Fetches all past messages
