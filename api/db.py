@@ -106,19 +106,46 @@ async def get_session_username(db: Connection, username: str) -> Row | None:
         # logging maybe?
         return session
 
+async def create_chat(db: Connection) -> int:
+    async with db.execute("INSERT INTO Chat DEFAULT VALUES") as cursor:
+        await db.commit()
+        return cursor.lastrowid
 
-# def session_exists(username: str):
-#     for _, sesh in sessions.items():
-#         if sesh == username:
-#             return True
-#     return False
+async def add_user_to_chat(db: Connection, user_id: int, chat_id: int):
+    async with db.execute("INSERT INTO InChat (user_id, chat_id) VALUES (?, ?)", (user_id, chat_id)) as cursor:
+        await db.commit()
+        return cursor.lastrowid
 
-
-# def user_in(chat_id: str):
-#     # Get a list of all usernames that are a part of the chat
-#     pass
-
-
+async def get_users_in_chat(db: Connection, chat_id: int) -> Iterable[Row]:
+    async with db.execute("SELECT user_id FROM InChat WHERE chat_id = ?", (chat_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def get_chats_for_user(db: Connection, user_id: int) -> Iterable[Row]:
+    async with db.execute("""
+    SELECT Chat.* FROM Chat
+    JOIN InChat ON Chat.chat_id = InChat.chat_id
+    WHERE InChat.user_id = ?
+    """, (user_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def get_messages_for_chat(db: Connection, chat_id: int) -> Iterable[Row]:
+    async with db.execute("SELECT * FROM Message WHERE chat_id = ?", (chat_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def create_message(db: Connection, sender_id: int, chat_id: int, content: str):
+    async with db.execute("INSERT INTO Message (sent_by, chat_id, content) VALUES (?, ?, ?)", (sender_id, chat_id, content)) as cursor:
+        await db.commit()
+        return cursor.lastrowid
+    
+async def get_messages_for_user(db: Connection, user_id: int) -> Iterable[Row]:
+    async with db.execute("""
+    SELECT * FROM Message
+    JOIN InChat ON Message.chat_id = InChat.chat_id
+    WHERE InChat.user_id = ?
+    """, (user_id,)) as cursor:
+        return await cursor.fetchall()
+    
+    
 async def init_db():
     async with connect(DATABASE_URL) as db:
         await db.execute("""

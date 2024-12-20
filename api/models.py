@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
 from typing import List, Self
+from pydantic import BaseModel
 
-@dataclass
-class User:
+class User(BaseModel):
     # id: str
     username: str
     password: str
@@ -15,16 +15,14 @@ class User:
     #     pass
 
 
-@dataclass
-class Chat:
+class Chat(BaseModel):
     id: str
 
-@dataclass
-class Message:
-    sender_id: str #Foreign Key
-    chat_id: str #Foreign Key
+class Message(BaseModel):
+    sender_id: int #Foreign Key
+    chat_id: int #Foreign Key
     content: str
-    timestamp: datetime
-    
 
+class ChatCreation(BaseModel):
+    user_ids: List[int]
 
