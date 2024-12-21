@@ -4,8 +4,7 @@ import base64
 import os
 from fastapi import APIRouter, HTTPException, Depends
 from aiosqlite import Connection
-from dependencies import get_db
-from db import get_user
+from db import get_user, get_db
 
 router = APIRouter()
 

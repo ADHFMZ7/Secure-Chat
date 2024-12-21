@@ -5,12 +5,8 @@ from aiosqlite import Connection
 from Cryptodome.PublicKey import RSA
 from Cryptodome.Cipher import PKCS1_OAEP
 import secrets
-from db import get_user, create_user, get_session_username, create_session
-from dependencies import get_current_user, get_db
-from aiosqlite import Connection
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Cipher import PKCS1_OAEP
-import secrets
+from db import get_user, create_user, get_session_username, create_session, get_db
+
 
 router = APIRouter()
 
@@ -87,7 +83,7 @@ async def login(
 
 
 @router.get("/protected")
-async def test_protected(user=Depends(get_current_user)):
+async def test_protected(user=Depends(get_user)):
     """
     Protected endpoint to test authentication.
     """
