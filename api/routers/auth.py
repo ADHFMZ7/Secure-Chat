@@ -1,90 +1,74 @@
-from fastapi import APIRouter, Form, HTTPException, Depends, Response
+from fastapi import APIRouter, Form, HTTPException, Depends
 from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
 from aiosqlite import Connection
-from Cryptodome.PublicKey import RSA
-from Cryptodome.Cipher import PKCS1_OAEP
-import secrets
-from db import get_user, create_user, get_session_username, create_session, get_db
 
+from db import create_user, get_session_username, create_session, delete_session, get_db
+from security import validate_user, hash_password, get_authenticated_user
 
 router = APIRouter()
 
-# Load KDC's public key once
-with open("kdc_public.pem", "rb") as pub_key_file:
-    kdc_public_key = RSA.import_key(pub_key_file.read())
+@router.post("/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(),
+                db: Connection = Depends(get_db)):
+    """
+    Endpoint for user login. Returns an oauth2 token if successful.
 
-# Load KDC's private key once
-with open("kdc_private.pem", "rb") as priv_key_file:
-    kdc_private_key = RSA.import_key(priv_key_file.read())
-kdc_cipher = PKCS1_OAEP.new(kdc_private_key)
+    Input:
+        - username
+        - password
+
+    Output:
+        - access_token
+        - token_type
+    """
+
+    username, password = form_data.username, form_data.password
+    user_id = await validate_user(db, username, password)
+
+    # TODO: change this later when sessions are figured out
+    if (session := await get_session_username(db, username)):
+        print(f"session {session['session_id']} already existed")
+        # User already has a session
+        # load it and create a new cookie
+        raise HTTPException(status_code=400, detail="Session already exists")
+    # create new session 
+    session_id = await create_session(db, user_id)
+    print("Created new session:", session_id)
+
+
+    return {"access_token": session_id, 
+            "token_type": "bearer"}
 
 
 @router.post("/register")
-async def register(
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    master_key: Annotated[str, Form()],
-    db=Depends(get_db)
-):
-    """
-    Register a new user with username, password, and master key.
-    """
-    # Encrypt master key using KDC's public key
-    kdc_cipher_public = PKCS1_OAEP.new(kdc_public_key)
-    encrypted_master_key = kdc_cipher_public.encrypt(master_key.encode())
+async def register(username: Annotated[str, Form()], 
+                   password: Annotated[str, Form()], 
+                   db = Depends(get_db)):
 
-    # Save encrypted master key in the database (avoid file storage)
-    if not (user := await create_user(db, username, password, encrypted_master_key)):
-        raise HTTPException(status_code=400, detail="Error registering user")
+    hashed_password = hash_password(password)
 
-    return {"id": user[0]}
+    if not (user := await create_user(db, username, hashed_password)):
+        # User not registered properly.
+        raise HTTPException(status_code=400, detail="error registering user")
+
+    return {"id": user['user_id']}
 
 
-@router.post("/login")
-async def login(
-    response: Response,
-    username: Annotated[str, Form()],
-    password: Annotated[str, Form()],
-    db: Connection = Depends(get_db)
-):
-    """
-    Log in a user and establish a session.
-    """
-    # Check if user exists
-    if not (user := await get_user(db, username)):
-        raise HTTPException(status_code=404, detail="User does not exist")
 
-    if user[2] != password:
-        raise HTTPException(status_code=401, detail="Password incorrect")
+@router.get("/logout")
+async def logout(user = Depends(get_authenticated_user), db = Depends(get_db)):
+    print(user) 
+   
+    if not (session := await get_session_username(db, user['username'])):
+        print('session does not exist')
+        return {"message": "logged out"}
 
-    # Check if a session already exists
-    if (session := await get_session_username(db, username)):
-        raise HTTPException(status_code=400, detail="Session already exists")
-
-    # Decrypt the master key
-    encrypted_master_key = user[4]  # Assuming encrypted master key is stored in the database
-    decrypted_master_key = kdc_cipher.decrypt(encrypted_master_key).decode()
-
-    # Create a secure session ID
-    session_id = secrets.token_hex(32)
-    await create_session(db, username, session_id)
-
-    # Set session ID in secure cookie
-    response.set_cookie(
-        key="session_id",
-        value=session_id,
-        httponly=True,
-        secure=True,  # True for production with HTTPS
-        samesite="Strict",  
-    )
-
-    return {"session_id": session_id}
-
+    await delete_session(db, session['session_id']) 
+    return {"message": "logged out"}
 
 @router.get("/protected")
-async def test_protected(user=Depends(get_user)):
-    """
-    Protected endpoint to test authentication.
-    """
-    return {"message": "Successfully authenticated", "user": user}
+async def test_protected(user = Depends(get_authenticated_user)):
+    print("successfully authenticated")
+    print(user)
+    return user
