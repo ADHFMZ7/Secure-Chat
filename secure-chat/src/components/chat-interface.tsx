@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { MessageSquare, Plus, Menu, UserPlus, Settings } from "lucide-react"
+import { Settings } from "lucide-react"
 import Sidebar from "@/components/sidebar"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
@@ -139,8 +139,10 @@ export function ChatInterface() {
 
   return (
     <Card className="w-full h-screen flex overflow-hidden">
+      
+       
       <Sidebar 
-        chats={Object.keys(messages).map(chatId => ({ id: chatId, name: `Chat ${chatId}` }))}
+        chats={Object.keys(messages).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }))}
         activeUsers={[{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]}
         setActiveChatId={setActiveChatId}
       />

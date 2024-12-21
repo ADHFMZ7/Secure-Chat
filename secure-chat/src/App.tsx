@@ -1,4 +1,3 @@
-import React from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LoginForm } from "@/components/login-form"
 import { RegisterForm } from "@/components/register-form"
