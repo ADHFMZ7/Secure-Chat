@@ -145,7 +145,12 @@ async def get_messages_for_user(db: Connection, user_id: int) -> Iterable[Row]:
     """, (user_id,)) as cursor:
         return await cursor.fetchall()
     
-    
+async def remove_user_from_chat(db, user_id: int, chat_id: int):
+    query = """
+    DELETE FROM chat_users
+    WHERE user_id = :user_id AND chat_id = :chat_id
+    """
+    await db.execute(query, values={"user_id": user_id, "chat_id": chat_id})
     
 async def init_db():
     async with connect(DATABASE_URL) as db:
