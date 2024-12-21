@@ -27,7 +27,7 @@ export function LoginForm({
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    auth.loginAction(formData);
+    await auth.loginAction(formData);
     navigate("/");
   };
 

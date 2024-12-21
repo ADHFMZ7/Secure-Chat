@@ -36,7 +36,9 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
 
 
     return {"access_token": session_id, 
-            "token_type": "bearer"}
+            "token_type": "bearer",
+            "username": username,
+            "user_id": user_id}
 
 
 @router.post("/register")
