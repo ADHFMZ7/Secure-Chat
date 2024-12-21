@@ -24,7 +24,7 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
     await websocket.accept()
     print(f"User {user['username']} connected")
     print(user['user_id'])
-    await conns.add_connection(websocket, int(user['user_id']))
+    await conns.add_connection(websocket, int(user['user_id']), user['username'])
 
     try:
         # Notify all users in the chat that a new user has connected
@@ -73,7 +73,7 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 return
 
     except (WebSocketDisconnect, WebSocketException):
-        await conns.remove_connection(int(user['user_id']))
+        await conns.remove_connection(int(user['user_id']), user['username'])
 
 
 @router.get("/chats")

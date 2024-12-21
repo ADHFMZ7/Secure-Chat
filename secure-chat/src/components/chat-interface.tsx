@@ -104,6 +104,10 @@ export function ChatInterface() {
     ws.current.onmessage = (event) => {
       const message = JSON.parse(event.data);
       console.log("Received message:", message);
+      if (!message.body) {
+        console.error("Message body is undefined:", message);
+        return;
+      }
       switch (message.type) {
         case "chat_created":
           console.log(`Chat created with ID: ${message.body.chat_id}`);
@@ -122,17 +126,25 @@ export function ChatInterface() {
           console.log(`User ${message.body.user_id} left chat ${message.body.chat_id}`);
           break;
         case "went-online":
-          setActiveUsers((prevUsers) => [
-            ...prevUsers,
-            { id: message.body.user_id, name: `User ${message.body.user_id}` } // Assuming you don't have the username, using a placeholder
-          ]);
-          console.log(`User ${message.body.user_id} went online`);
+          if (message.body.user_id && message.body.username) {
+            setActiveUsers((prevUsers) => [
+              ...prevUsers,
+              { id: message.body.user_id, name: message.body.username }
+            ]);
+            console.log(`User ${message.body.username} went online`);
+          } else {
+            console.error("Invalid went-online message body:", message.body);
+          }
           break;
         case "went-offline":
-          setActiveUsers((prevUsers) =>
-            prevUsers.filter((user) => user.id !== message.body.user_id)
-          );
-          console.log(`User ${message.body.user_id} went offline`);
+          if (message.body.user_id) {
+            setActiveUsers((prevUsers) =>
+              prevUsers.filter((user) => user.id !== message.body.user_id)
+            );
+            console.log(`User ${message.body.username} went offline`);
+          } else {
+            console.error("Invalid went-offline message body:", message.body);
+          }
           break;
         default:
           console.error("Unknown message type:", message.type);
