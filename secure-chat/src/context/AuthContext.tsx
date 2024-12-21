@@ -16,7 +16,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 
   const loginAction = async (data: FormData) => {
     try {
-      const response = await fetch("http://chat.aldasouqi.com/login", {
+      const response = await fetch("https://chat.aldasouqi.com/login", {
         method: "POST",
         body: data,
       });
@@ -42,7 +42,7 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
   };
 
   const logOut = () => {
-    fetch("http://chat.aldasouqi.com/logout", {
+    fetch("https://chat.aldasouqi.com/logout", {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${token}`

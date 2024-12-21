@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
-import {useAuth} from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from "react-router-dom";
 
 export function LoginForm({
@@ -19,16 +19,22 @@ export function LoginForm({
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
   
-    const auth = useAuth();
-    const navigate = useNavigate();
-    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const auth = useAuth();
+  const navigate = useNavigate();
+  const [error, setError] = useState<string | null>(null);
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Prevent default form submission
 
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    await auth.loginAction(formData);
-    navigate("/");
+    try {
+      await auth.loginAction(formData);
+      navigate("/");
+    } catch (err: any) {
+      setError(err.message || "An error occurred during login.");
+    }
   };
 
   return (
@@ -39,6 +45,7 @@ export function LoginForm({
           <CardDescription>
             Enter your username below to login to your account
           </CardDescription>
+          {error && <CardDescription className="text-red-500">{error}</CardDescription>}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>
@@ -78,3 +85,5 @@ export function LoginForm({
     </div>
   );
 }
+
+export default LoginForm;
