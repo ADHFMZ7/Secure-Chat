@@ -10,35 +10,25 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, redirect } from "react-router-dom";
+import {useAuth} from '@/context/AuthContext';
+import { useNavigate } from "react-router-dom";
 
 export function LoginForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
-  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  
+    const auth = useAuth();
+    const navigate = useNavigate();
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Prevent default form submission
 
     const form = event.currentTarget;
     const formData = new FormData(form);
 
-    try {
-      const response = await fetch("http://chat.aldasouqi.com/login", {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to login. Please check your credentials.");
-      }
-
-      const result = await response.json();
-      console.log("Login successful:", result);
-      // Handle success, e.g., redirect or update UI
-    } catch (error) {
-      console.error("Error during login:", error);
-      // Handle error, e.g., show a notification
-    }
+    auth.loginAction(formData);
+    navigate("/");
   };
 
   return (

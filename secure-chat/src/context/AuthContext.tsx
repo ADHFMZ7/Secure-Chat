@@ -1,56 +1,62 @@
-import React, { createContext, useContext, useState, useEffect } from "react";
+import React, { useContext, createContext, useState } from "react";
 
+// Define types for AuthContext
 interface AuthContextType {
-  user: any;
-  login: (username: string, password: string) => Promise<void>;
-  logout: () => void;
+  user: any; // Replace `any` with your user type
+  token: string;
+  loginAction: (data: FormData) => Promise<void>;
+  logOut: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<any>(null);
+const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [user, setUser] = useState<any>(null); // Replace `any` with your user type
+  const [token, setToken] = useState<string>(localStorage.getItem("token") || "");
 
-  useEffect(() => {
-    // Check if user is already logged in (e.g., check local storage or cookie)
-    const storedUser = localStorage.getItem("user");
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
+  const loginAction = async (data: FormData) => {
+    try {
+      const response = await fetch("http://chat.aldasouqi.com/login", {
+        method: "POST",
+        body: data,
+      });
+
+      if (!response.ok) {
+        throw new Error("Login failed. Please check your credentials.");
+      }
+
+      const res = await response.json();
+      console.log("Response: ", res );
+      if (res.access_token) {
+        setUser(res.access_token);
+        setToken(res.access_token);
+        localStorage.setItem("token", res.access_token);
+        return; // Let the caller decide what to do next (e.g., navigate)
+      }
+      console.error("Error response body:", res);
+      throw new Error(res.message || "Unknown error occurred.");
+    } catch (err: any) {
+      console.error("Login error:", err.message || err);
+      throw err; // Propagate the error to the caller
     }
-  }, []);
-
-  const login = async (username: string, password: string) => {
-    // Replace with your login API call
-    const response = await fetch("http://chat.aldasouqi.com/login", {
-      method: "POST",
-      body: JSON.stringify({ username, password }),
-      headers: {
-        "Content-Type": "application/json",
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to login. Please check your credentials.");
-    }
-
-    const result = await response.json();
-    setUser(result.user);
-    localStorage.setItem("user", JSON.stringify(result.user));
   };
 
-  const logout = () => {
+  const logOut = () => {
     setUser(null);
-    localStorage.removeItem("user");
+    setToken("");
+    localStorage.removeItem("token"); // Use the correct key
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout }}>
+    <AuthContext.Provider value={{ token, user, loginAction, logOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => {
+export default AuthProvider;
+
+export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
     throw new Error("useAuth must be used within an AuthProvider");

@@ -10,12 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 
 export function RegisterForm({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<"div">) {
+  const navigate = useNavigate();
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault(); // Prevent default form submission
 
@@ -34,9 +35,10 @@ export function RegisterForm({
 
       const result = await response.json();
       console.log("Registration successful:", result);
-      // Redirect to login page or show success message
+      navigate("/login");
     } catch (error) {
       console.error("Error during registration:", error);
+      alert("Error during registration:" + error);
     }
   };
 
