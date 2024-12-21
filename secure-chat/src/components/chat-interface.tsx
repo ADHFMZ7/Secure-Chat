@@ -119,20 +119,20 @@ export function ChatInterface() {
           });
           break;
         case "left_chat":
-          console.log(`User ${message.body.username} left chat ${message.body.chat_id}`);
+          console.log(`User ${message.body.user_id} left chat ${message.body.chat_id}`);
           break;
-        case "went_online":
+        case "went-online":
           setActiveUsers((prevUsers) => [
             ...prevUsers,
-            { id: message.body.user_id, name: message.body.username }
+            { id: message.body.user_id, name: `User ${message.body.user_id}` } // Assuming you don't have the username, using a placeholder
           ]);
-          console.log(`User ${message.body.username} went online`);
+          console.log(`User ${message.body.user_id} went online`);
           break;
-        case "went_offline":
+        case "went-offline":
           setActiveUsers((prevUsers) =>
             prevUsers.filter((user) => user.id !== message.body.user_id)
           );
-          console.log(`User ${message.body.username} went offline`);
+          console.log(`User ${message.body.user_id} went offline`);
           break;
         default:
           console.error("Unknown message type:", message.type);
