@@ -13,6 +13,7 @@ export function ChatInterface() {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
+  const [chats, setChats] = useState<{ id: number; name: string }[]>([]);
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -43,8 +44,10 @@ export function ChatInterface() {
 
         const data = await response.json();
         setMessages(data);
-        if (Object.keys(data).length > 0) {
-          setActiveChatId(Object.keys(data)[0]); // Set the first chat as active by default
+        const chatList = Object.keys(data).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }));
+        setChats(chatList);
+        if (chatList.length > 0) {
+          setActiveChatId(chatList[0].id.toString()); // Set the first chat as active by default
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -110,6 +113,14 @@ export function ChatInterface() {
       switch (message.type) {
         case "chat_created":
           console.log(`Chat created with ID: ${message.body.chat_id}`);
+          setChats((prevChats) => [
+            ...prevChats,
+            { id: message.body.chat_id, name: `Chat ${message.body.chat_id}` }
+          ]);
+          setMessages((prevMessages) => ({
+            ...prevMessages,
+            [message.body.chat_id]: []
+          }));
           break;
         case "message":
           setMessages((prevMessages) => {
@@ -197,11 +208,10 @@ export function ChatInterface() {
     }
   };
 
-
   return (
     <Card className="w-full h-screen flex overflow-hidden">
       <Sidebar 
-        chats={Object.keys(messages).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }))}
+        chats={chats}
         activeUsers={activeUsers}
         setActiveChatId={setActiveChatId}
         onCreateChat={handleCreateChat}
@@ -237,7 +247,7 @@ export function ChatInterface() {
         </div>
         {/* Chat messages */}
         <div className="flex-1 overflow-y-auto p-4">
-          {activeChatId && (
+          {activeChatId && messages[activeChatId] && (
             <div>
               <h2 className="font-bold">Chat {activeChatId}</h2>
               {messages[activeChatId].map((message, index) => (
