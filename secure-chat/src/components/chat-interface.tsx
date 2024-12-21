@@ -2,8 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MessageSquare, Plus, Menu, UserPlus, Settings } from "lucide-react"
+import { Settings } from "lucide-react"
 import Sidebar from "@/components/sidebar"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
@@ -193,10 +192,11 @@ export function ChatInterface() {
   };
 
   const handleCreateChat = () => {
-    if (ws.current) {
+    if (ws.current && user) {
       ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: [user.user_id] } }));
     }
   };
+
 
   return (
     <Card className="w-full h-screen flex overflow-hidden">

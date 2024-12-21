@@ -6,13 +6,14 @@ interface SidebarProps {
   chats: { id: number; name: string }[];
   activeUsers: { id: number; name: string }[];
   setActiveChatId: (id: string) => void;
+  onCreateChat: () => void; // Add this line
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, setActiveChatId }) => {
+const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, setActiveChatId, onCreateChat }) => { // Modify this line
   return (
     <div className="bg-secondary w-64 transition-all duration-300 overflow-hidden flex flex-col">
       <div className="p-4 flex space-x-2">
-        <Button className="flex-1" variant="outline" title="New Chat">
+        <Button className="flex-1" variant="outline" title="New Chat" onClick={onCreateChat}> {/* Modify this line */}
           <Plus className="h-4 w-4" />
         </Button>
         <Button className="flex-1" variant="outline" title="Add Friend">
