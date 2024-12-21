@@ -2,7 +2,7 @@ from fastapi import APIRouter, WebSocketDisconnect, WebSocketException, WebSocke
 from typing import Annotated, Dict
 
 from models import Message, ChatCreation
-from db import get_db, create_chat, add_user_to_chat, get_users_in_chat, create_message, get_chats_for_user, get_messages_for_chat, remove_user_from_chat
+from db import get_db, create_chat, add_user_to_chat, get_users_in_chat, create_message, get_chats_for_user, get_messages_for_chat, remove_user_from_chat, get_user_by_id
 from security import ws_get_user, get_authenticated_user
 from connections import ConnectionManager
 
@@ -103,5 +103,11 @@ async def get_chats(db = Depends(get_db),
     return responses
 
 @router.get("/users")
-async def get_connected_users(user = Depends(get_authenticated_user)):
-    return conns.get_active_users()
+async def get_connected_users(user = Depends(get_authenticated_user), db = Depends(get_db)):
+    users = {}
+    for user_id in conns.get_active_users():
+        if user_id == user['user_id']:
+            continue
+        user = await get_user_by_id(db, user_id)
+        users[user['user_id']] = user['username']
+    return users

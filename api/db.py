@@ -29,6 +29,12 @@ async def get_user_by_session(db: Connection, session_id: str) -> Row | None:
         user = await cursor.fetchone()
         return user
 
+async def get_user_by_id(db: Connection, user_id: int) -> Row | None:
+    
+    async with db.execute("SELECT * FROM User WHERE user_id = ?", (user_id,)) as cursor:
+        user = await cursor.fetchone()
+        return user
+
 async def create_user(db: Connection, username: str, hashed_password: str) -> Row | None:
     # TODO: 
     # - Check if username already exists

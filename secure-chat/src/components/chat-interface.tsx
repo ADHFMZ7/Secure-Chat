@@ -2,7 +2,8 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Settings } from "lucide-react"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { MessageSquare, Plus, Menu, UserPlus, Settings } from "lucide-react"
 import Sidebar from "@/components/sidebar"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
@@ -12,6 +13,7 @@ export function ChatInterface() {
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
+  const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -50,7 +52,34 @@ export function ChatInterface() {
       }
     };
 
+    const fetchActiveUsers = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        console.error("No token found in localStorage");
+        return;
+      }
+
+      try {
+        const response = await fetch("https://chat.aldasouqi.com/users", {
+          headers: {
+            "Authorization": `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch active users");
+        }
+
+        const data = await response.json();
+        const users = Object.keys(data).map(userId => ({ id: Number(userId), name: data[userId] }));
+        setActiveUsers(users);
+      } catch (error) {
+        console.error("Error fetching active users:", error);
+      }
+    };
+
     fetchMessages();
+    fetchActiveUsers();
   }, [logOut, navigate]);
 
   useEffect(() => {
@@ -74,6 +103,7 @@ export function ChatInterface() {
 
     ws.current.onmessage = (event) => {
       const message = JSON.parse(event.data);
+      console.log("Received message:", message);
       switch (message.type) {
         case "chat_created":
           console.log(`Chat created with ID: ${message.body.chat_id}`);
@@ -89,7 +119,20 @@ export function ChatInterface() {
           });
           break;
         case "left_chat":
-          console.log(`User ${message.body.user_id} left chat ${message.body.chat_id}`);
+          console.log(`User ${message.body.username} left chat ${message.body.chat_id}`);
+          break;
+        case "went_online":
+          setActiveUsers((prevUsers) => [
+            ...prevUsers,
+            { id: message.body.user_id, name: message.body.username }
+          ]);
+          console.log(`User ${message.body.username} went online`);
+          break;
+        case "went_offline":
+          setActiveUsers((prevUsers) =>
+            prevUsers.filter((user) => user.id !== message.body.user_id)
+          );
+          console.log(`User ${message.body.username} went offline`);
           break;
         default:
           console.error("Unknown message type:", message.type);
@@ -137,14 +180,19 @@ export function ChatInterface() {
     }
   };
 
+  const handleCreateChat = () => {
+    if (ws.current) {
+      ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: [user.user_id] } }));
+    }
+  };
+
   return (
     <Card className="w-full h-screen flex overflow-hidden">
-      
-       
       <Sidebar 
         chats={Object.keys(messages).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }))}
-        activeUsers={[{ id: 1, name: "User 1" }, { id: 2, name: "User 2" }]}
+        activeUsers={activeUsers}
         setActiveChatId={setActiveChatId}
+        onCreateChat={handleCreateChat}
       />
       {/* Main chat area */}
       <div className="flex-1 flex flex-col">

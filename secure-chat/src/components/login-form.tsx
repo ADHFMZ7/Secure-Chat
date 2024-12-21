@@ -13,6 +13,7 @@ import { Label } from "@/components/ui/label";
 import { Link } from "react-router-dom";
 import { useAuth } from '@/context/AuthContext';
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 export function LoginForm({
   className,
@@ -21,6 +22,7 @@ export function LoginForm({
   
   const auth = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
@@ -33,7 +35,13 @@ export function LoginForm({
       await auth.loginAction(formData);
       navigate("/");
     } catch (err: any) {
-      setError(err.message || "An error occurred during login.");
+      const errorMessage = err.message || "An error occurred during login.";
+      setError(errorMessage);
+      toast({
+        title: "Login Error",
+        description: errorMessage,
+        status: "error",
+      });
     }
   };
 
@@ -45,7 +53,6 @@ export function LoginForm({
           <CardDescription>
             Enter your username below to login to your account
           </CardDescription>
-          {error && <CardDescription className="text-red-500">{error}</CardDescription>}
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit}>

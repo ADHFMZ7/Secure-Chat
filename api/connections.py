@@ -11,14 +11,14 @@ class ConnectionManager:
     async def add_connection(self, ws: WebSocket, user_id: int):
         self.connections[user_id] = ws
         print(f"Added connection for user {user_id}") 
-        # await self.broadcast_message("went-online", {"user_id": user_id})
+        await self.broadcast_message("went-online", {"user_id": user_id})
 
     async def remove_connection(self, user_id: int):
         print(f"Removed connection for user {user_id}")
         if user_id in self.connections:
             del self.connections[user_id]
       
-        # await self.broadcast_message("went-offline", {"user_id": user_id}) 
+        await self.broadcast_message("went-offline", {"user_id": user_id}) 
         
 
     def get_active_users(self):
