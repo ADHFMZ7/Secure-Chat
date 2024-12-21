@@ -1,9 +1,18 @@
 from aiosqlite import Connection, Row, connect, IntegrityError
 from typing import Iterable
 from models import User
+from uuid import uuid4
 # from random import randint
 
 DATABASE_URL = "main.db"
+
+async def get_db():
+    """
+    Dependency to fetch database session     
+    """
+    async with connect(DATABASE_URL) as db:
+        db.row_factory = Row 
+        yield db
 
 async def get_user(db: Connection, username: str) -> Row | None:
 
@@ -11,61 +20,72 @@ async def get_user(db: Connection, username: str) -> Row | None:
         user = await cursor.fetchone()
         return user
 
+async def get_user_by_session(db: Connection, session_id: str) -> Row | None:
 
-async def create_user(db: Connection, username: str, password: str) -> Row | None:
+    async with db.execute("""SELECT User.* FROM User 
+                             WHERE User.user_id = (
+                                    SELECT user_id FROM Session 
+                                    WHERE session_id = ?)""", (session_id,)) as cursor:
+        user = await cursor.fetchone()
+        return user
+
+async def create_user(db: Connection, username: str, hashed_password: str) -> Row | None:
     # TODO: 
-    # - Hash password
     # - Check if username already exists
-    # - Return user object
+    # - Return user
 
     # Make sure username doesnt already exist
     if await get_user(db, username):
         return None
-    
+
     try:
         await db.execute(
-            "INSERT INTO User (username, password) VALUES (?, ?)", 
-            (username, password)
+            "INSERT INTO User (username, hashed_password) VALUES (?, ?)", 
+            (username, hashed_password)
         )
         await db.commit()
     except IntegrityError:
         return None
-
+   
     return await get_user(db, username)
+    
 
 async def users_in(db: Connection, chat_id: int) -> Iterable[Row]:
+    """
+    Gets all users that are members of a chat
+
+    Input:
+    - chat_id
+
+    Output:
+    - [User]
+    """
     async with db.execute("""
     SELECT username FROM User
-    JOIN InChat ON User.ID = InChat.user_id
+    JOIN InChat ON User.user_id = InChat.user_id
     WHERE chat_id = ?
     """, (chat_id,)) as cursor:
         return await cursor.fetchall()
 
 
-        # CREATE TABLE IF NOT EXISTS Session (
-        #     session_id INTEGER PRIMARY KEY AUTOINCREMENT,
-        #     user_id INTEGER,
-        #     last_seen TIMESTAMP,
-        #     status TEXT,
-        #     device TEXT,
-        #     ip_address TEXT,
-        #     FOREIGN KEY (user_id) REFERENCES User(ID)
+async def create_session(db:Connection, user_id: int):
 
+    session_id = str(uuid4())
 
-async def create_session(db:Connection, user: User):
-
-    async with db.execute("INSERT INTO Session (user_id) VALUES (?)", (user.ID,)) as cursor:
+    async with db.execute("INSERT INTO Session (session_id, user_id) VALUES (?, ?)", (session_id, user_id,)) as cursor:
         
-        await cursor.commit()
-
-    # Store session information in map
-    # Session should store:
-    # user that is logged in
-    # When logged in ??
-    # When it expires??
+        await db.commit()
+        return session_id
 
 
-# # Change this when sessions are figured out.
+async def delete_session(db: Connection, session_id: int):
+    async with db.execute("DELETE FROM Session WHERE session_id = ?", (session_id,)) as cursor:
+        await db.commit()
+        return cursor.rowcount
+    
+    return 0
+
+# Change this when sessions are figured out.
 async def get_session(db: Connection, session_id: str) -> Row | None:
 
     async with db.execute("SELECT * FROM Session WHERE session_id = ?", (session_id,)) as cursor:
@@ -77,7 +97,7 @@ async def get_session_username(db: Connection, username: str) -> Row | None:
     query = """
         SELECT Session.*, User.username 
         FROM Session
-        JOIN User ON Session.user_id = User.ID
+        JOIN User ON Session.user_id = User.user_id
         WHERE User.username = ?
     """
 
@@ -86,33 +106,60 @@ async def get_session_username(db: Connection, username: str) -> Row | None:
         # logging maybe?
         return session
 
+async def create_chat(db: Connection) -> int:
+    async with db.execute("INSERT INTO Chat DEFAULT VALUES") as cursor:
+        await db.commit()
+        return cursor.lastrowid
 
-# def session_exists(username: str):
-#     for _, sesh in sessions.items():
-#         if sesh == username:
-#             return True
-#     return False
+async def add_user_to_chat(db: Connection, user_id: int, chat_id: int):
+    async with db.execute("INSERT INTO InChat (user_id, chat_id) VALUES (?, ?)", (user_id, chat_id)) as cursor:
+        await db.commit()
+        return cursor.lastrowid
 
-
-# def user_in(chat_id: str):
-#     # Get a list of all usernames that are a part of the chat
-#     pass
-
-
+async def get_users_in_chat(db: Connection, chat_id: int) -> Iterable[Row]:
+    async with db.execute("SELECT user_id FROM InChat WHERE chat_id = ?", (chat_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def get_chats_for_user(db: Connection, user_id: int) -> Iterable[Row]:
+    async with db.execute("""
+    SELECT Chat.* FROM Chat
+    JOIN InChat ON Chat.chat_id = InChat.chat_id
+    WHERE InChat.user_id = ?
+    """, (user_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def get_messages_for_chat(db: Connection, chat_id: int) -> Iterable[Row]:
+    async with db.execute("SELECT * FROM Message WHERE chat_id = ?", (chat_id,)) as cursor:
+        return await cursor.fetchall()
+    
+async def create_message(db: Connection, sender_id: int, chat_id: int, content: str):
+    async with db.execute("INSERT INTO Message (sent_by, chat_id, content) VALUES (?, ?, ?)", (sender_id, chat_id, content)) as cursor:
+        await db.commit()
+        return cursor.lastrowid
+    
+async def get_messages_for_user(db: Connection, user_id: int) -> Iterable[Row]:
+    async with db.execute("""
+    SELECT * FROM Message
+    JOIN InChat ON Message.chat_id = InChat.chat_id
+    WHERE InChat.user_id = ?
+    """, (user_id,)) as cursor:
+        return await cursor.fetchall()
+    
+    
 async def init_db():
     async with connect(DATABASE_URL) as db:
         await db.execute("""
         CREATE TABLE IF NOT EXISTS User (
-            ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
+            hashed_password TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
 
         await db.execute("""
         CREATE TABLE IF NOT EXISTS Chat (
-            ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """)
@@ -123,8 +170,8 @@ async def init_db():
             chat_id INTEGER,
             joined_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (user_id, chat_id),
-            FOREIGN KEY (user_id) REFERENCES User(ID),
-            FOREIGN KEY (chat_id) REFERENCES Chat(ID)
+            FOREIGN KEY (user_id) REFERENCES User(user_id),
+            FOREIGN KEY (chat_id) REFERENCES Chat(chat_id)
         )
         """)
 
@@ -134,31 +181,31 @@ async def init_db():
             P2 INTEGER,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY (P1, P2),
-            FOREIGN KEY (P1) REFERENCES User(ID),
-            FOREIGN KEY (P2) REFERENCES User(ID)
+            FOREIGN KEY (P1) REFERENCES User(user_id),
+            FOREIGN KEY (P2) REFERENCES User(user_id)
         )
         """)
 
         await db.execute("""
         CREATE TABLE IF NOT EXISTS Message (
-            ID INTEGER PRIMARY KEY AUTOINCREMENT,
+            message_id INTEGER PRIMARY KEY AUTOINCREMENT,
             sent_by INTEGER,
             chat_id INTEGER,
             content TEXT,
             timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             is_read BOOLEAN DEFAULT 0,
-            FOREIGN KEY (sent_by) REFERENCES User(ID),
-            FOREIGN KEY (chat_id) REFERENCES Chat(ID)
+            FOREIGN KEY (sent_by) REFERENCES User(user_id),
+            FOREIGN KEY (chat_id) REFERENCES Chat(chat_id)
         )
         """)
 
         await db.execute("""
         CREATE TABLE IF NOT EXISTS Session (
-            session_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            session_id CHAR(36) PRIMARY KEY,
             user_id INTEGER,
             last_seen TIMESTAMP,
             ip_address TEXT,
-            FOREIGN KEY (user_id) REFERENCES User(ID)
+            FOREIGN KEY (user_id) REFERENCES User(user_id)
         )
         """)
 

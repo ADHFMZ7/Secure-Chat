@@ -1,5 +1,10 @@
 from fastapi import APIRouter, Form, HTTPException, Depends, Response
+from fastapi.security import OAuth2PasswordRequestForm
 from typing import Annotated
+from aiosqlite import Connection
+from Cryptodome.PublicKey import RSA
+from Cryptodome.Cipher import PKCS1_OAEP
+import secrets
 from db import get_user, create_user, get_session_username, create_session
 from dependencies import get_current_user, get_db
 from aiosqlite import Connection
@@ -75,7 +80,7 @@ async def login(
         value=session_id,
         httponly=True,
         secure=True,  # True for production with HTTPS
-        samesite="Strict",  # Adjust depending on your requirements
+        samesite="Strict",  
     )
 
     return {"session_id": session_id}
