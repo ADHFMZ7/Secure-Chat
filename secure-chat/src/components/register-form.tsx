@@ -24,7 +24,7 @@ export function RegisterForm({
     const formData = new FormData(form);
 
     try {
-      const response = await fetch("http://localhost:8000/register", {
+      const response = await fetch("http://chat.aldasouqi.com/register", {
         method: "POST",
         body: formData,
       });

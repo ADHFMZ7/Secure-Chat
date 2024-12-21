@@ -26,7 +26,7 @@ export function ChatInterface() {
       }
 
       try {
-        const response = await fetch("http://localhost:8000/chats", {
+        const response = await fetch("http://chat.aldasouqi.com/chats", {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -66,7 +66,7 @@ export function ChatInterface() {
       return;
     }
 
-    ws.current = new WebSocket(`ws://localhost:8000/chat?token=${token}`);
+    ws.current = new WebSocket(`ws://chat.aldasouqi.com/chat?token=${token}`);
 
     ws.current.onopen = () => {
       console.log("WebSocket connection established");
