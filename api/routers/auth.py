@@ -26,12 +26,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(),
     username, password = form_data.username, form_data.password
     user_id = await validate_user(db, username, password)
 
-    # TODO: change this later when sessions are figured out
     if (session := await get_session_username(db, username)):
         print(f"session {session['session_id']} already existed")
-        # User already has a session
-        # load it and create a new cookie
-        raise HTTPException(status_code=400, detail="Session already exists")
+        await delete_session(db, session['session_id'])
+
     # create new session 
     session_id = await create_session(db, user_id)
     print("Created new session:", session_id)
