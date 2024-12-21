@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
@@ -14,6 +14,8 @@ export function ChatInterface() {
   const [newMessage, setNewMessage] = useState('');
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -51,15 +53,87 @@ export function ChatInterface() {
     fetchMessages();
   }, [logOut, navigate]);
 
+  useEffect(() => {
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      console.error("No token found in localStorage");
+      return;
+    }
+
+    ws.current = new WebSocket(`ws://localhost:8000/chat?token=${token}`);
+
+    ws.current.onopen = () => {
+      console.log("WebSocket connection established");
+    };
+
+    ws.current.onmessage = (event) => {
+      const message = JSON.parse(event.data);
+      switch (message.type) {
+        case "chat_created":
+          console.log(`Chat created with ID: ${message.body.chat_id}`);
+          break;
+        case "message":
+          setMessages((prevMessages) => {
+            const updatedMessages = { ...prevMessages };
+            if (!updatedMessages[message.body.chat_id]) {
+              updatedMessages[message.body.chat_id] = [];
+            }
+            updatedMessages[message.body.chat_id].push(message.body);
+            return updatedMessages;
+          });
+          break;
+        case "left_chat":
+          console.log(`User ${message.body.user_id} left chat ${message.body.chat_id}`);
+          break;
+        default:
+          console.error("Unknown message type:", message.type);
+      }
+    };
+
+    ws.current.onclose = (event) => {
+      if (event.wasClean) {
+        console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
+      } else {
+        console.error('WebSocket connection closed unexpectedly');
+      }
+    };
+
+    ws.current.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    return () => {
+      if (ws.current) {
+        ws.current.close();
+      }
+    };
+  }, []);
+
   const handleSendMessage = () => {
-    if (activeChatId && newMessage.trim()) {
-      // Add the new message to the messages state (this is just a local update, you should also send it to the server)
-      const updatedMessages = {
-        ...messages,
-        [activeChatId]: [...messages[activeChatId], { sender_id: user?.user_id, chat_id: activeChatId, content: newMessage, timestamp: new Date().toISOString() }]
+    if (activeChatId && newMessage.trim() && ws.current && user) {
+      const message = {
+        type: 'send_message',
+        body: {
+          sender_id: user.user_id,
+          chat_id: activeChatId,
+          content: newMessage,
+          timestamp: new Date().toISOString(),
+        }
       };
-      setMessages(updatedMessages);
+      ws.current.send(JSON.stringify(message));
       setNewMessage('');
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      handleSendMessage();
     }
   };
 
@@ -112,6 +186,7 @@ export function ChatInterface() {
                   </div>
                 </div>
               ))}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
@@ -122,6 +197,7 @@ export function ChatInterface() {
             className="flex-1 p-2 border border-gray-300 rounded"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
             placeholder="Type your message..."
           />
           <Button variant="outline" onClick={handleSendMessage} className="ml-2">Send</Button>

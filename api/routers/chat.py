@@ -24,11 +24,10 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
     await websocket.accept()
     print(f"User {user['username']} connected")
     print(user['user_id'])
-    conns.add_connection(websocket, int(user['user_id']))
+    await conns.add_connection(websocket, int(user['user_id']))
 
     try:
         # Notify all users in the chat that a new user has connected
-        await broadcast_to_chat(db, user['user_id'], f"User {user['username']} has connected")
 
         while True:
             payload = await websocket.receive_json()
@@ -43,7 +42,9 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                         chat_id = await create_chat(db)
                         await add_user_to_chat(db, user['user_id'], chat_id)
                         if (user_conn := conns.get_user_connection(user['user_id'])):
-                            await user_conn.send_json("You're in new chat with id " + str(chat_id) + "!")
+                            await user_conn.send_json({"type": "chat_created", 
+                                                       "body": {"chat_id": chat_id}})
+                                                       
                     
                     case 'send_message': 
                         body = Message(**payload['body'])
@@ -52,18 +53,18 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                         await create_message(db, **body.model_dump()) 
                         for user in await get_users_in_chat(db, body.chat_id):
                             if (user_conn := conns.get_user_connection(user['user_id'])):
-                                await user_conn.send_json(f"Received message '{body.content}' from user with id {body.sender_id}")
+                                await user_conn.send_json({"type": "message", 
+                                                              "body": body.model_dump()
+                                                              })
                           
                     case 'leave_chat':
                         chat_id = payload['chat_id']
                         await remove_user_from_chat(db, user['user_id'], chat_id)
-                        await websocket.send_json({"type": "left_chat", "chat_id": chat_id})
+                        await websocket.send_json({"type": "left_chat", 
+                                                    "body": {"chat_id": chat_id, 
+                                                             "user_id": user['user_id']}}) 
                         print(f"User {user['username']} left chat {chat_id}")
-                        await broadcast_to_chat(db, chat_id, f"User {user['username']} has left the chat")
-                    
-                    case '':          
-                        pass
-                    
+                   
                     case default:
                         await websocket.send_json({"Message": "Invalid message type"}) 
                
@@ -72,9 +73,8 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 return
 
     except (WebSocketDisconnect, WebSocketException):
-        conns.remove_connection(int(user['user_id']))
-        print(f"User {user['username']} disconnected")
-        await broadcast_to_chat(db, user['user_id'], f"User {user['username']} has disconnected")
+        await conns.remove_connection(int(user['user_id']))
+
 
 @router.get("/chats")
 async def get_chats(db = Depends(get_db),
