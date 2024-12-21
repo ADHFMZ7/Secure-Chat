@@ -146,6 +146,7 @@ async def get_messages_for_user(db: Connection, user_id: int) -> Iterable[Row]:
         return await cursor.fetchall()
     
     
+    
 async def init_db():
     async with connect(DATABASE_URL) as db:
         await db.execute("""

@@ -15,8 +15,10 @@ class ConnectionManager:
         if user_id in self.connections:
             del self.connections[user_id]
 
-    def get_active_connections(self):
-        return self.connections
+    def get_active_users(self):
+        if len(self.connections) == 0:
+            return []
+        return list(self.connections.keys())
 
     def get_user_connection(self, user_id: int) -> WebSocket | None:
         return self.connections.get(user_id, None)
