@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import { LoginForm } from "@/components/login-form"
 import { RegisterForm } from "@/components/register-form"
-import AuthProvider from './context/AuthContext'
+import { AuthProvider } from './context/AuthContext'
 import PrivateRoute from './components/protected-route'
 import { ChatInterface } from './components/chat-interface'
 

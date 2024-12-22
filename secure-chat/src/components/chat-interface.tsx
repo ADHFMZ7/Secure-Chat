@@ -92,7 +92,7 @@ export function ChatInterface() {
   }, [lastMessage]);
 
   useEffect(() => {
-    const fetchMessages = async () => {
+    const fetchChats = async () => {
       const token = localStorage.getItem("token");
       if (!token) {
         console.error("No token found in localStorage");
@@ -112,21 +112,33 @@ export function ChatInterface() {
             logOut();
             navigate("/login");
           }
-          throw new Error("Failed to fetch messages");
+          throw new Error("Failed to fetch chats");
         }
 
         const data = await response.json();
-        setMessages(data);
-        localStorage.setItem('messages', JSON.stringify(data));
-        const chatList = Object.keys(data).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }));
+        const chatList = Object.keys(data).map(chatId => {
+          const chatUsers = data[chatId].users.map((user: any) => user.username);
+          const chatName = chatUsers.join(', ');
+          return { id: Number(chatId), name: chatName };
+        });
+
         setChats(chatList);
         localStorage.setItem('chats', JSON.stringify(chatList));
+
+        const messages = Object.keys(data).reduce((acc, chatId) => {
+          acc[chatId] = data[chatId].messages;
+          return acc;
+        }, {} as { [key: string]: any[] });
+
+        setMessages(messages);
+        localStorage.setItem('messages', JSON.stringify(messages));
+
         if (chatList.length > 0) {
           setActiveChatId(chatList[0].id.toString()); // Set the first chat as active by default
           localStorage.setItem('activeChatId', chatList[0].id.toString());
         }
       } catch (error) {
-        console.error("Error fetching messages:", error);
+        console.error("Error fetching chats:", error);
       }
     };
 
@@ -162,7 +174,7 @@ export function ChatInterface() {
       }
     };
 
-    fetchMessages();
+    fetchChats();
     fetchActiveUsers();
   }, [logOut, navigate]);
 

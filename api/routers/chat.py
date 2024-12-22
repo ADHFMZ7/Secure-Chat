@@ -87,19 +87,33 @@ async def get_chats(db = Depends(get_db),
     responses = {}
    
     for c_id in chat_ids:
-        responses[c_id] = await get_messages_for_chat(db, c_id)
         messages = await get_messages_for_chat(db, c_id)
+        users_in_chat = await get_users_in_chat(db, c_id)
 
         ms = []
+        users_list = []
 
         for message in sorted(messages, key=lambda x: x['timestamp']):
+            sender = await get_user_by_id(db, message['sent_by'])
             ms.append({
                 "sender_id": message['sent_by'],
+                "sender_name": sender['username'],
                 "chat_id": message['chat_id'],
                 "content": message['content'],
                 "timestamp": message['timestamp']
             })
-        responses[c_id] = ms
+
+        for user in users_in_chat:
+            user_details = await get_user_by_id(db, user['user_id'])
+            users_list.append({
+                "user_id": user['user_id'],
+                "username": user_details['username']
+            })
+
+        responses[c_id] = {
+            "messages": ms,
+            "users": users_list
+        }
 
     return responses
 

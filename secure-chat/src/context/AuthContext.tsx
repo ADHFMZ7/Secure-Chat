@@ -1,4 +1,4 @@
-import React, { useContext, createContext, useState } from "react";
+import React, { useContext, createContext, useState, useEffect } from "react";
 
 // Define types for AuthContext
 interface AuthContextType {
@@ -11,7 +11,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<{ username: string; user_id: number } | null>(null);
+  const [user, setUser] = useState<{ username: string; user_id: number } | null>(() => {
+    const savedUser = localStorage.getItem('user');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
   const [token, setToken] = useState<string>(localStorage.getItem("token") || "");
 
   const loginAction = async (data: FormData) => {
@@ -28,45 +31,47 @@ const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => 
       const res = await response.json();
       console.log("Response: ", res);
       if (res.access_token && res.username && res.user_id) {
-        setUser({ username: res.username, user_id: res.user_id });
+        const userData = { username: res.username, user_id: res.user_id };
+        setUser(userData);
         setToken(res.access_token);
         localStorage.setItem("token", res.access_token);
+        localStorage.setItem("user", JSON.stringify(userData));
         return; // Let the caller decide what to do next (e.g., navigate)
       }
       console.error("Error response body:", res);
-      throw new Error(res.message || "Unknown error occurred.");
-    } catch (err: any) {
-      console.error("Login error:", err.message || err);
-      throw err; // Propagate the error to the caller
+    } catch (error) {
+      console.error("Login error:", error);
+      throw error;
     }
   };
 
   const logOut = () => {
-    fetch("https://chat.aldasouqi.com/logout", {
-      method: "GET",
-      headers: {
-        "Authorization": `Bearer ${token}`
-      }
-    });
-
     setUser(null);
     setToken("");
+    localStorage.removeItem("user");
     localStorage.removeItem("token");
   };
 
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) {
+      setUser(JSON.parse(savedUser));
+    }
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ token, user, loginAction, logOut }}>
+    <AuthContext.Provider value={{ user, token, loginAction, logOut }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
-export default AuthProvider;
-
-export const useAuth = (): AuthContextType => {
+const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
+  if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
+
+export { AuthProvider, useAuth };

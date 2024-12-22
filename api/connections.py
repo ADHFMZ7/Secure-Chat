@@ -10,6 +10,8 @@ class ConnectionManager:
         self.connections: Dict[int, WebSocket] = {}
 
     async def add_connection(self, ws: WebSocket, user_id: int, username: str):
+        if user_id in self.connections:
+            self.remove_connection(user_id, username)
         await ws.accept()
         self.connections[user_id] = ws
         print(f"Added connection for user {user_id}") 
