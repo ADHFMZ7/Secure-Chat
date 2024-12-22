@@ -24,6 +24,7 @@ export function ChatInterface() {
       const token = localStorage.getItem("token");
       if (!token) {
         console.error("No token found in localStorage");
+        navigate("/login");
         return;
       }
 
@@ -58,6 +59,7 @@ export function ChatInterface() {
       const token = localStorage.getItem("token");
       if (!token) {
         console.error("No token found in localStorage");
+        navigate("/login");
         return;
       }
 
@@ -90,6 +92,12 @@ export function ChatInterface() {
   }, [logOut, navigate]);
 
   const token = localStorage.getItem("token");
+  if (!token) {
+    console.error("No token found in localStorage");
+    navigate("/login");
+    return null;
+  }
+
   const ws = useWebSocketHandler(token, setMessages, setChats, setUsers, setActiveUsers);
 
   const handleSendMessage = () => {
