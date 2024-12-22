@@ -50,7 +50,25 @@ export function ChatInterface() {
     if (lastMessage !== null) {
       const message = JSON.parse(lastMessage.data);
       console.log('Received message:', message);
-      // Handle incoming messages here
+
+      if (message.type === 'message') {
+        setMessages(prevMessages => {
+          const chatId = message.body.chat_id;
+          const updatedMessages = { ...prevMessages };
+          if (!updatedMessages[chatId]) {
+            updatedMessages[chatId] = [];
+          }
+          updatedMessages[chatId].push(message.body);
+          localStorage.setItem('messages', JSON.stringify(updatedMessages));
+          return updatedMessages;
+        });
+      } else if (message.type === 'chat_created') {
+        setChats(prevChats => {
+          const updatedChats = [...prevChats, { id: message.body.chat_id, name: `Chat ${message.body.chat_id}` }];
+          localStorage.setItem('chats', JSON.stringify(updatedChats));
+          return updatedChats;
+        });
+      }
     }
   }, [lastMessage]);
 
