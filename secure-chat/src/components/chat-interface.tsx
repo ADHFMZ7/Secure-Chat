@@ -6,23 +6,90 @@ import ChatMessages from "@/components/chat-messages"
 import MessageInput from "@/components/message-input"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
-import { useWebSocketHandler } from "@/hooks/use-websocket-handler"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
+import useWebSocket, { ReadyState } from 'react-use-websocket';
 
 export function ChatInterface() {
-  const [messages, setMessages] = useState<{ [key: string]: any[] }>({});
+  const [messages, setMessages] = useState<{ [key: string]: any[] }>(() => {
+    const savedMessages = localStorage.getItem('messages');
+    return savedMessages ? JSON.parse(savedMessages) : {};
+  });
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
   const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(() => {
+    return localStorage.getItem('activeChatId');
+  });
   const [newMessage, setNewMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
-  const [chats, setChats] = useState<{ id: number; name: string }[]>([]);
+  const [chats, setChats] = useState<{ id: number; name: string }[]>(() => {
+    const savedChats = localStorage.getItem('chats');
+    return savedChats ? JSON.parse(savedChats) : [];
+  });
   const [users, setUsers] = useState<{ [key: number]: string }>({});
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    console.error("No token found in localStorage");
+    navigate("/login");
+    return null;
+  }
+
+  const { sendMessage, lastMessage, readyState } = useWebSocket(`wss://chat.aldasouqi.com/chat?token=${token}`, {
+    onOpen: () => console.log('WebSocket connection established'),
+    onClose: () => console.log('WebSocket connection closed'),
+    onError: (error) => console.error('WebSocket error:', error),
+    shouldReconnect: () => true, // Will attempt to reconnect on all close events
+  });
+
+  useEffect(() => {
+    if (lastMessage !== null) {
+      const message = JSON.parse(lastMessage.data);
+      console.log('Received message:', message);
+
+      if (message.type === 'message') {
+        setMessages(prevMessages => {
+          const chatId = message.body.chat_id;
+          const updatedMessages = { ...prevMessages };
+          if (!updatedMessages[chatId]) {
+            updatedMessages[chatId] = [];
+          }
+          updatedMessages[chatId].push(message.body);
+          localStorage.setItem('messages', JSON.stringify(updatedMessages));
+          return updatedMessages;
+        });
+      } else if (message.type === 'chat_created') {
+        setChats(prevChats => {
+          const updatedChats = [...prevChats, { id: message.body.chat_id, name: `Chat ${message.body.chat_id}` }];
+          localStorage.setItem('chats', JSON.stringify(updatedChats));
+          return updatedChats;
+        });
+      } else if (message.type === 'went-online') {
+        setActiveUsers(prevActiveUsers => {
+          const updatedActiveUsers = [...prevActiveUsers, { id: message.body.user_id, name: message.body.username }];
+          return updatedActiveUsers;
+        });
+        setUsers(prevUsers => {
+          const updatedUsers = { ...prevUsers, [message.body.user_id]: message.body.username };
+          return updatedUsers;
+        });
+      } else if (message.type === 'went-offline') {
+        setActiveUsers(prevActiveUsers => {
+          const updatedActiveUsers = prevActiveUsers.filter(user => user.id !== message.body.user_id);
+          return updatedActiveUsers;
+        });
+        setUsers(prevUsers => {
+          const updatedUsers = { ...prevUsers };
+          delete updatedUsers[message.body.user_id];
+          return updatedUsers;
+        });
+      }
+    }
+  }, [lastMessage]);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -50,10 +117,13 @@ export function ChatInterface() {
 
         const data = await response.json();
         setMessages(data);
+        localStorage.setItem('messages', JSON.stringify(data));
         const chatList = Object.keys(data).map(chatId => ({ id: Number(chatId), name: `Chat ${chatId}` }));
         setChats(chatList);
+        localStorage.setItem('chats', JSON.stringify(chatList));
         if (chatList.length > 0) {
           setActiveChatId(chatList[0].id.toString()); // Set the first chat as active by default
+          localStorage.setItem('activeChatId', chatList[0].id.toString());
         }
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -96,17 +166,8 @@ export function ChatInterface() {
     fetchActiveUsers();
   }, [logOut, navigate]);
 
-  const token = localStorage.getItem("token");
-  if (!token) {
-    console.error("No token found in localStorage");
-    navigate("/login");
-    return null;
-  }
-
-  const ws = useWebSocketHandler(token, setMessages, setChats, setUsers, setActiveUsers);
-
   const handleSendMessage = () => {
-    if (activeChatId && newMessage.trim() && ws.current && user) {
+    if (activeChatId && newMessage.trim() && readyState === ReadyState.OPEN && user) {
       const message = {
         type: 'send_message',
         body: {
@@ -116,7 +177,7 @@ export function ChatInterface() {
           timestamp: new Date().toISOString(),
         }
       };
-      ws.current.send(JSON.stringify(message));
+      sendMessage(JSON.stringify(message));
       setNewMessage('');
     }
   };
@@ -128,9 +189,9 @@ export function ChatInterface() {
   };
 
   const handleCreateChat = () => {
-    if (ws.current && ws.current.readyState === WebSocket.OPEN && user) {
+    if (readyState === ReadyState.OPEN && user) {
       const userIds = selectedUsers.includes(user.user_id) ? selectedUsers : [user.user_id, ...selectedUsers];
-      ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: userIds } }));
+      sendMessage(JSON.stringify({ type: 'create_chat', body: { user_ids: userIds } }));
       setIsDialogOpen(false);
       setSelectedUsers([]);
     } else {

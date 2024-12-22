@@ -49,8 +49,8 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                         # Check if chat exists 
                         # Check if user is in chat
                         await create_message(db, **body.model_dump()) 
-                        for user in await get_users_in_chat(db, body.chat_id):
-                            if (user_conn := conns.get_user_connection(user['user_id'])):
+                        for ruser in await get_users_in_chat(db, body.chat_id):
+                            if (user_conn := conns.get_user_connection(ruser['user_id'])):
                                 await user_conn.send_json({"type": "message", 
                                                               "body": body.model_dump()
                                                               })
@@ -71,6 +71,7 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 return
 
     except WebSocketDisconnect:
+        print(user)
         await conns.remove_connection(int(user['user_id']), user['username'])
     except Exception as e:
         print(f"Error: {e}")
