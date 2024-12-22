@@ -7,10 +7,15 @@ import MessageInput from "@/components/message-input"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
 import { useWebSocketHandler } from "@/hooks/use-websocket-handler"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<{ [key: string]: any[] }>({});
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(false);
+  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [newMessage, setNewMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
@@ -124,10 +129,21 @@ export function ChatInterface() {
 
   const handleCreateChat = () => {
     if (ws.current && ws.current.readyState === WebSocket.OPEN && user) {
-      ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: [user.user_id] } }));
+      const userIds = selectedUsers.includes(user.user_id) ? selectedUsers : [user.user_id, ...selectedUsers];
+      ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: userIds } }));
+      setIsDialogOpen(false);
+      setSelectedUsers([]);
     } else {
       console.error("WebSocket is not open or user is not defined");
     }
+  };
+
+  const handleUserSelection = (userId: number) => {
+    setSelectedUsers((prevSelectedUsers) =>
+      prevSelectedUsers.includes(userId)
+        ? prevSelectedUsers.filter((id) => id !== userId)
+        : [...prevSelectedUsers, userId]
+    );
   };
 
   return (
@@ -136,7 +152,7 @@ export function ChatInterface() {
         chats={chats}
         activeUsers={activeUsers}
         setActiveChatId={setActiveChatId}
-        onCreateChat={handleCreateChat}
+        onCreateChat={() => setIsDialogOpen(true)}
       />
       <div className="flex-1 flex flex-col">
         <ChatHeader 
@@ -157,6 +173,27 @@ export function ChatInterface() {
           handleKeyPress={handleKeyPress}
         />
       </div>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Select Users</DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            {Object.entries(users)
+              .filter(([userId]) => Number(userId) !== user?.user_id)
+              .map(([userId, username]) => (
+                <div key={userId} className="flex items-center mb-2">
+                  <Checkbox
+                    checked={selectedUsers.includes(Number(userId))}
+                    onCheckedChange={() => handleUserSelection(Number(userId))}
+                  />
+                  <span className="ml-2">{username}</span>
+                </div>
+              ))}
+            <Button variant="outline" onClick={handleCreateChat}>Create Chat</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
