@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card } from "@/components/ui/card"
 import Sidebar from "@/components/sidebar"
 import ChatHeader from "@/components/chat-header"
@@ -43,7 +43,7 @@ export function ChatInterface() {
     onOpen: () => console.log('WebSocket connection established'),
     onClose: () => console.log('WebSocket connection closed'),
     onError: (error) => console.error('WebSocket error:', error),
-    shouldReconnect: (closeEvent) => true, // Will attempt to reconnect on all close events
+    shouldReconnect: () => true, // Will attempt to reconnect on all close events
   });
 
   useEffect(() => {
