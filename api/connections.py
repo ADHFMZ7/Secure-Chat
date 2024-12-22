@@ -31,7 +31,7 @@ class ConnectionManager:
         return self.connections.get(user_id, None)
 
     async def broadcast_message(self, type: str, message: Dict):
-        for connection in self.active_connections.values():
+        for connection in self.connections.values():
             try:
                 await connection.send_json({"type": type, "body": message})
             except Exception as e:
