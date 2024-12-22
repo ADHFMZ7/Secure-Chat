@@ -38,7 +38,6 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                     case 'create_chat':
                         body = ChatCreation(**payload['body'])  
                         chat_id = await create_chat(db, body.user_ids)
-                        await add_user_to_chat(db, user['user_id'], chat_id)
                         for user_id in body.user_ids: 
                             if (user_conn := conns.get_user_connection(user_id)):
                                 await user_conn.send_json({"type": "chat_created", 
