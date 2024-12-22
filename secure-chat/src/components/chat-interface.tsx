@@ -24,7 +24,7 @@ export function ChatInterface() {
   });
   const [newMessage, setNewMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
-  const [chats, setChats] = useState<{ id: number; name: string }[]>(() => {
+  const [chats, setChats] = useState<{ id: number; name: string, latestTimestamp: string }[]>(() => {
     const savedChats = localStorage.getItem('chats');
     return savedChats ? JSON.parse(savedChats) : [];
   });
@@ -62,9 +62,21 @@ export function ChatInterface() {
           localStorage.setItem('messages', JSON.stringify(updatedMessages));
           return updatedMessages;
         });
+
+        setChats(prevChats => {
+          const updatedChats = prevChats.map(chat => {
+            if (chat.id === message.body.chat_id) {
+              return { ...chat, latestTimestamp: message.body.timestamp };
+            }
+            return chat;
+          }).sort((a, b) => new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime());
+          localStorage.setItem('chats', JSON.stringify(updatedChats));
+          return updatedChats;
+        });
       } else if (message.type === 'chat_created') {
         setChats(prevChats => {
-          const updatedChats = [...prevChats, { id: message.body.chat_id, name: `Chat ${message.body.chat_id}` }];
+          const updatedChats = [...prevChats, { id: message.body.chat_id, name: `Chat ${message.body.chat_id}`, latestTimestamp: new Date().toISOString() }];
+          updatedChats.sort((a, b) => new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime());
           localStorage.setItem('chats', JSON.stringify(updatedChats));
           return updatedChats;
         });
@@ -119,8 +131,9 @@ export function ChatInterface() {
         const chatList = Object.keys(data).map(chatId => {
           const chatUsers = data[chatId].users.map((user: any) => user.username);
           const chatName = chatUsers.join(', ');
-          return { id: Number(chatId), name: chatName };
-        });
+          const latestTimestamp = data[chatId].messages.length > 0 ? data[chatId].messages[data[chatId].messages.length - 1].timestamp : new Date().toISOString();
+          return { id: Number(chatId), name: chatName, latestTimestamp };
+        }).sort((a, b) => new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime());
 
         setChats(chatList);
         localStorage.setItem('chats', JSON.stringify(chatList));
@@ -191,6 +204,18 @@ export function ChatInterface() {
       };
       sendMessage(JSON.stringify(message));
       setNewMessage('');
+
+      // Update chat list to move the active chat to the top
+      setChats(prevChats => {
+        const updatedChats = prevChats.map(chat => {
+          if (chat.id.toString() === activeChatId) {
+            return { ...chat, latestTimestamp: message.body.timestamp };
+          }
+          return chat;
+        }).sort((a, b) => new Date(b.latestTimestamp).getTime() - new Date(a.latestTimestamp).getTime());
+        localStorage.setItem('chats', JSON.stringify(updatedChats));
+        return updatedChats;
+      });
     }
   };
 
@@ -224,6 +249,7 @@ export function ChatInterface() {
       <Sidebar 
         chats={chats}
         activeUsers={activeUsers}
+        activeChatId={activeChatId}
         setActiveChatId={setActiveChatId}
         onCreateChat={() => setIsDialogOpen(true)}
       />

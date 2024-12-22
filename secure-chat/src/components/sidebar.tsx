@@ -1,19 +1,19 @@
-import React from 'react'
 import { Button } from "@/components/ui/button"
 import { MessageSquare, Plus, UserPlus } from "lucide-react"
 
 interface SidebarProps {
   chats: { id: number; name: string }[];
   activeUsers: { id: number; name: string }[];
+  activeChatId: string | null;
   setActiveChatId: (id: string) => void;
-  onCreateChat: () => void; // Add this line
+  onCreateChat: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, setActiveChatId, onCreateChat }) => { // Modify this line
+const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, activeChatId, setActiveChatId, onCreateChat }) => {
   return (
     <div className="bg-secondary w-64 transition-all duration-300 overflow-hidden flex flex-col">
       <div className="p-4 flex space-x-2">
-        <Button className="flex-1" variant="outline" title="New Chat" onClick={onCreateChat}> {/* Modify this line */}
+        <Button className="flex-1" variant="outline" title="New Chat" onClick={onCreateChat}>
           <Plus className="h-4 w-4" />
         </Button>
         <Button className="flex-1" variant="outline" title="Add Friend">
@@ -24,7 +24,11 @@ const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, setActiveChatId, 
         {/* Chat list */}
         <div className="p-2 font-semibold">Chats</div>
         {chats.map((chat) => (
-          <div key={chat.id} className="p-2 hover:bg-primary/10 cursor-pointer flex items-center" onClick={() => setActiveChatId(chat.id.toString())}>
+          <div
+            key={chat.id}
+            className={`p-2 cursor-pointer flex items-center ${activeChatId === chat.id.toString() ? 'bg-primary/20' : 'hover:bg-primary/10'}`}
+            onClick={() => setActiveChatId(chat.id.toString())}
+          >
             <MessageSquare className="mr-2 h-4 w-4" />
             <span>{chat.name}</span>
           </div>
@@ -39,7 +43,7 @@ const Sidebar: React.FC<SidebarProps> = ({ chats, activeUsers, setActiveChatId, 
         ))}
       </div>
     </div>
-  )
-}
+  );
+};
 
 export default Sidebar;
