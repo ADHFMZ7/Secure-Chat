@@ -1,11 +1,12 @@
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Settings } from "lucide-react"
 import Sidebar from "@/components/sidebar"
+import ChatHeader from "@/components/chat-header"
+import ChatMessages from "@/components/chat-messages"
+import MessageInput from "@/components/message-input"
 import { useAuth } from "@/context/AuthContext"
 import { useNavigate } from "react-router-dom"
+import { useWebSocketHandler } from "@/hooks/use-websocket-handler"
 
 export function ChatInterface() {
   const [messages, setMessages] = useState<{ [key: string]: any[] }>({});
@@ -14,10 +15,9 @@ export function ChatInterface() {
   const [newMessage, setNewMessage] = useState('');
   const [activeUsers, setActiveUsers] = useState<{ id: number; name: string }[]>([]);
   const [chats, setChats] = useState<{ id: number; name: string }[]>([]);
+  const [users, setUsers] = useState<{ [key: number]: string }>({});
   const { user, logOut } = useAuth();
   const navigate = useNavigate();
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const ws = useRef<WebSocket | null>(null);
 
   useEffect(() => {
     const fetchMessages = async () => {
@@ -73,8 +73,13 @@ export function ChatInterface() {
         }
 
         const data = await response.json();
-        const users = Object.keys(data).map(userId => ({ id: Number(userId), name: data[userId] }));
-        setActiveUsers(users);
+        const users = Object.keys(data).reduce((acc, userId) => {
+          acc[Number(userId)] = data[userId];
+          return acc;
+        }, {} as { [key: number]: string });
+        setUsers(users);
+        const activeUsersList = Object.keys(data).map(userId => ({ id: Number(userId), name: data[userId] }));
+        setActiveUsers(activeUsersList);
       } catch (error) {
         console.error("Error fetching active users:", error);
       }
@@ -84,101 +89,8 @@ export function ChatInterface() {
     fetchActiveUsers();
   }, [logOut, navigate]);
 
-  useEffect(() => {
-    if (messagesEndRef.current) {
-      messagesEndRef.current.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages]);
-
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      console.error("No token found in localStorage");
-      return;
-    }
-
-    ws.current = new WebSocket(`wss://chat.aldasouqi.com/chat?token=${token}`);
-
-    ws.current.onopen = () => {
-      console.log("WebSocket connection established");
-    };
-
-    ws.current.onmessage = (event) => {
-      const message = JSON.parse(event.data);
-      console.log("Received message:", message);
-      if (!message.body) {
-        console.error("Message body is undefined:", message);
-        return;
-      }
-      switch (message.type) {
-        case "chat_created":
-          console.log(`Chat created with ID: ${message.body.chat_id}`);
-          setChats((prevChats) => [
-            ...prevChats,
-            { id: message.body.chat_id, name: `Chat ${message.body.chat_id}` }
-          ]);
-          setMessages((prevMessages) => ({
-            ...prevMessages,
-            [message.body.chat_id]: []
-          }));
-          break;
-        case "message":
-          setMessages((prevMessages) => {
-            const updatedMessages = { ...prevMessages };
-            if (!updatedMessages[message.body.chat_id]) {
-              updatedMessages[message.body.chat_id] = [];
-            }
-            updatedMessages[message.body.chat_id].push(message.body);
-            return updatedMessages;
-          });
-          break;
-        case "left_chat":
-          console.log(`User ${message.body.user_id} left chat ${message.body.chat_id}`);
-          break;
-        case "went-online":
-          if (message.body.user_id && message.body.username) {
-            setActiveUsers((prevUsers) => [
-              ...prevUsers,
-              { id: message.body.user_id, name: message.body.username }
-            ]);
-            console.log(`User ${message.body.username} went online`);
-          } else {
-            console.error("Invalid went-online message body:", message.body);
-          }
-          break;
-        case "went-offline":
-          if (message.body.user_id) {
-            setActiveUsers((prevUsers) =>
-              prevUsers.filter((user) => user.id !== message.body.user_id)
-            );
-            console.log(`User ${message.body.username} went offline`);
-          } else {
-            console.error("Invalid went-offline message body:", message.body);
-          }
-          break;
-        default:
-          console.error("Unknown message type:", message.type);
-      }
-    };
-
-    ws.current.onclose = (event) => {
-      if (event.wasClean) {
-        console.log(`WebSocket connection closed cleanly, code=${event.code}, reason=${event.reason}`);
-      } else {
-        console.error('WebSocket connection closed unexpectedly');
-      }
-    };
-
-    ws.current.onerror = (error) => {
-      console.error("WebSocket error:", error);
-    };
-
-    return () => {
-      if (ws.current) {
-        ws.current.close();
-      }
-    };
-  }, []);
+  const token = localStorage.getItem("token");
+  const ws = useWebSocketHandler(token, setMessages, setChats, setUsers, setActiveUsers);
 
   const handleSendMessage = () => {
     if (activeChatId && newMessage.trim() && ws.current && user) {
@@ -203,8 +115,10 @@ export function ChatInterface() {
   };
 
   const handleCreateChat = () => {
-    if (ws.current && user) {
+    if (ws.current && ws.current.readyState === WebSocket.OPEN && user) {
       ws.current.send(JSON.stringify({ type: 'create_chat', body: { user_ids: [user.user_id] } }));
+    } else {
+      console.error("WebSocket is not open or user is not defined");
     }
   };
 
@@ -216,64 +130,24 @@ export function ChatInterface() {
         setActiveChatId={setActiveChatId}
         onCreateChat={handleCreateChat}
       />
-      {/* Main chat area */}
       <div className="flex-1 flex flex-col">
-        {/* Header */}
-        <div className="bg-secondary p-4 flex items-center justify-between">
-          <div className="flex items-center">
-            <h1 className="text-xl font-bold">Web Chat</h1>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Settings />
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Settings</DialogTitle>
-                </DialogHeader>
-                <div className="py-4">
-                  <h3 className="font-semibold mb-2">Notification Settings</h3>
-                  <div className="flex items-center justify-between mb-2">
-                    {/* Add your settings content here */}
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-            <Button variant="outline" onClick={logOut}>Sign Out</Button>
-          </div>
-        </div>
-        {/* Chat messages */}
-        <div className="flex-1 overflow-y-auto p-4">
-          {activeChatId && messages[activeChatId] && (
-            <div>
-              <h2 className="font-bold">Chat {activeChatId}</h2>
-              {messages[activeChatId].map((message, index) => (
-                <div key={index} className={`flex ${message.sender_id === user?.user_id ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`p-2 my-2 rounded-lg max-w-xs ${message.sender_id === user?.user_id ? 'bg-blue-500 text-white' : 'bg-gray-200 text-black'}`}>
-                    {message.sender_id !== user?.user_id && <div className="font-semibold">User {message.sender_id}</div>}
-                    <div>{message.content}</div>
-                  </div>
-                </div>
-              ))}
-              <div ref={messagesEndRef} />
-            </div>
-          )}
-        </div>
-        {/* Message input */}
-        <div className="p-4 bg-secondary flex items-center">
-          <input
-            type="text"
-            className="flex-1 p-2 border border-gray-300 rounded"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type your message..."
-          />
-          <Button variant="outline" onClick={handleSendMessage} className="ml-2">Send</Button>
-        </div>
+        <ChatHeader 
+          isSettingsOpen={isSettingsOpen}
+          setIsSettingsOpen={setIsSettingsOpen}
+          logOut={logOut}
+        />
+        <ChatMessages 
+          messages={messages}
+          activeChatId={activeChatId}
+          users={users}
+          user={user}
+        />
+        <MessageInput 
+          newMessage={newMessage}
+          setNewMessage={setNewMessage}
+          handleSendMessage={handleSendMessage}
+          handleKeyPress={handleKeyPress}
+        />
       </div>
     </Card>
   );
