@@ -68,6 +68,25 @@ export function ChatInterface() {
           localStorage.setItem('chats', JSON.stringify(updatedChats));
           return updatedChats;
         });
+      } else if (message.type === 'went-online') {
+        setActiveUsers(prevActiveUsers => {
+          const updatedActiveUsers = [...prevActiveUsers, { id: message.body.user_id, name: message.body.username }];
+          return updatedActiveUsers;
+        });
+        setUsers(prevUsers => {
+          const updatedUsers = { ...prevUsers, [message.body.user_id]: message.body.username };
+          return updatedUsers;
+        });
+      } else if (message.type === 'went-offline') {
+        setActiveUsers(prevActiveUsers => {
+          const updatedActiveUsers = prevActiveUsers.filter(user => user.id !== message.body.user_id);
+          return updatedActiveUsers;
+        });
+        setUsers(prevUsers => {
+          const updatedUsers = { ...prevUsers };
+          delete updatedUsers[message.body.user_id];
+          return updatedUsers;
+        });
       }
     }
   }, [lastMessage]);

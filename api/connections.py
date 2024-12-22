@@ -39,7 +39,3 @@ class ConnectionManager:
         
         for user_id in disconnected_users:
             await self.remove_connection(user_id, "Unknown")
-
-    async def handle_disconnect(self, user_id: int, username: str):
-        if user_id in self.connections:
-            await self.remove_connection(user_id, username)
