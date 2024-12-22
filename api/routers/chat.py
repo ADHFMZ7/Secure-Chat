@@ -71,10 +71,10 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 return
 
     except WebSocketDisconnect:
-        await conns.remove_connection(int(user['user_id']), user['username'])
+        await conns.handle_disconnect(int(user['user_id']), user['username'])
     except Exception as e:
         print(f"Error: {e}")
-        await conns.remove_connection(int(user['user_id']), user['username'])
+        await conns.handle_disconnect(int(user['user_id']), user['username'])
 
 @router.get("/chats")
 async def get_chats(db = Depends(get_db),
