@@ -21,9 +21,7 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
     if user['username'] in conns.connections:
         return
    
-    await websocket.accept()
     print(f"User {user['username']} connected")
-    print(user['user_id'])
     await conns.add_connection(websocket, int(user['user_id']), user['username'])
 
     try:
@@ -39,11 +37,12 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 match payload['type']:
                     case 'create_chat':
                         body = ChatCreation(**payload['body'])  
-                        chat_id = await create_chat(db)
+                        chat_id = await create_chat(db, body.user_ids)
                         await add_user_to_chat(db, user['user_id'], chat_id)
-                        if (user_conn := conns.get_user_connection(user['user_id'])):
-                            await user_conn.send_json({"type": "chat_created", 
-                                                       "body": {"chat_id": chat_id}})
+                        for user_id in body.user_ids: 
+                            if (user_conn := conns.get_user_connection(user_id)):
+                                await user_conn.send_json({"type": "chat_created", 
+                                                           "body": {"chat_id": chat_id}})
                                                        
                     
                     case 'send_message': 
@@ -72,9 +71,11 @@ async def connect(websocket: WebSocket, db = Depends(get_db), user = Depends(ws_
                 # invalid message
                 return
 
-    except (WebSocketDisconnect, WebSocketException):
+    except WebSocketDisconnect:
         await conns.remove_connection(int(user['user_id']), user['username'])
-
+    except Exception as e:
+        print(f"Error: {e}")
+        await conns.remove_connection(int(user['user_id']), user['username'])
 
 @router.get("/chats")
 async def get_chats(db = Depends(get_db),

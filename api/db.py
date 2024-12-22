@@ -112,15 +112,26 @@ async def get_session_username(db: Connection, username: str) -> Row | None:
         # logging maybe?
         return session
 
-async def create_chat(db: Connection) -> int:
+
+async def create_blank_chat(db: Connection) -> int:
     async with db.execute("INSERT INTO Chat DEFAULT VALUES") as cursor:
         await db.commit()
         return cursor.lastrowid
+
 
 async def add_user_to_chat(db: Connection, user_id: int, chat_id: int):
     async with db.execute("INSERT INTO InChat (user_id, chat_id) VALUES (?, ?)", (user_id, chat_id)) as cursor:
         await db.commit()
         return cursor.lastrowid
+
+async def create_chat(db: Connection, user_ids: list[int]) -> int:
+    async with db.execute("INSERT INTO Chat DEFAULT VALUES") as cursor:
+        chat_id = cursor.lastrowid
+        for user_id in user_ids:
+            await add_user_to_chat(db, user_id, chat_id)
+        await db.commit()
+        return chat_id
+    
 
 async def get_users_in_chat(db: Connection, chat_id: int) -> Iterable[Row]:
     async with db.execute("SELECT user_id FROM InChat WHERE chat_id = ?", (chat_id,)) as cursor:
